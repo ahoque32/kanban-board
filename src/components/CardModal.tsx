@@ -114,7 +114,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
 
           <div className="grid gap-3 md:grid-cols-2">
             <Input
-              placeholder="Assignee (Ahawk, Lemuel, etc.)"
+              placeholder="Assignee (Ahawk, Tawfiq, Luke)"
               value={state.assignee}
               onChange={(event) => setState((prev) => ({ ...prev, assignee: event.target.value }))}
             />

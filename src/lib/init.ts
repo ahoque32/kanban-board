@@ -43,6 +43,15 @@ export async function ensureDbInitialized() {
       discord_webhook_url TEXT,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS webhooks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      assignee TEXT NOT NULL,
+      webhook_url TEXT NOT NULL,
+      label TEXT NOT NULL DEFAULT '',
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   const [existingBoard] = await db.select({ value: count() }).from(boards);

@@ -59,7 +59,7 @@ export function Board() {
 
   const assignees = useMemo(() => {
     const names = new Set(cards.map((card) => card.assignee.trim()).filter(Boolean));
-    const preferred = ["Ahawk", "Lemuel"];
+    const preferred = ["Ahawk", "Tawfiq", "Luke"];
     preferred.forEach((name) => names.add(name));
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [cards]);
