@@ -3,7 +3,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 
-const configuredPath = process.env.DATABASE_URL || "./drizzle/kanban.db";
+const configuredPath = process.env.DATABASE_URL || (process.env.NODE_ENV === "production" ? "/app/data/kanban.db" : "./drizzle/kanban.db");
 const dbPath = path.isAbsolute(configuredPath)
   ? configuredPath
   : path.join(process.cwd(), configuredPath);
