@@ -44,3 +44,4 @@ Open `http://localhost:3000`.
 - `npm run lint` - lint
 - `npm run db:generate` - generate Drizzle SQL from schema
 - `npm run db:migrate` - initialize local SQLite schema
+
