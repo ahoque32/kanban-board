@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyKey } from "discord-interactions";
 import { getDb } from "@/lib/db";
-import { cards, columns, boards, ASSIGNEES } from "@/lib/schema";
+import { cards, columns, boards } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 
 const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || "";
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       case "task": {
         const sub = options?.[0]?.name;
         const subOpts = options?.[0]?.options || [];
-        const getOpt = (n: string) => subOpts.find((o: any) => o.name === n)?.value;
+        const getOpt = (n: string) => subOpts.find((o: { name: string; value: string | number }) => o.name === n)?.value;
 
         if (sub === "add") {
           const title = getOpt("title");
@@ -254,8 +254,9 @@ export async function POST(req: NextRequest) {
       default:
         return reply(`Unknown command: ${name}`, true);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Discord command error:", err);
-    return reply(`❌ Error: ${err.message}`, true);
+    const message = err instanceof Error ? err.message : String(err);
+    return reply(`❌ Error: ${message}`, true);
   }
 }
