@@ -28,6 +28,9 @@ COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
 COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
 COPY --from=builder /app/node_modules/prebuild-install ./node_modules/prebuild-install
 
+# Copy discord-interactions for slash command verification
+COPY --from=builder /app/node_modules/discord-interactions ./node_modules/discord-interactions
+
 # Create writable data directory for SQLite
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
