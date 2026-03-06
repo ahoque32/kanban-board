@@ -52,5 +52,8 @@ jobs:
             --memory 512Mi \
             --min-instances 0 \
             --max-instances 3 \
+            --execution-environment gen2 \
+            --add-volume=name=kanban-data,type=cloud-storage,bucket=kanban-board-data-457623930004 \
+            --add-volume-mount=volume=kanban-data,mount-path=/app/data \
             --set-env-vars "NODE_ENV=production,DISCORD_PUBLIC_KEY=${{ secrets.DISCORD_PUBLIC_KEY }},DISCORD_APP_ID=${{ secrets.DISCORD_APP_ID }},KANBAN_URL=https://kanban-board-457623930004.us-east1.run.app" \
             --quiet
