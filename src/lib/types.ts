@@ -30,6 +30,16 @@ export type KanbanBoard = {
   updatedAt: string;
 };
 
+export type Attachment = {
+  id: number;
+  cardId: number;
+  filename: string;
+  storagePath: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+};
+
 export type BoardResponse = {
   board: KanbanBoard;
   columns: KanbanColumn[];

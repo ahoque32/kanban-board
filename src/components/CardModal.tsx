@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { KanbanCard, Priority } from "@/lib/types";
+import type { KanbanCard, Priority, Attachment } from "@/lib/types";
 
 type Props = {
   open: boolean;
@@ -38,6 +38,9 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [assigneeOptions, setAssigneeOptions] = useState<string[]>([]);
+  const [fileAttachments, setFileAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const loadAssignees = useCallback(async () => {
     const res = await fetch("/api/assignees");
@@ -47,7 +50,43 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
     }
   }, []);
 
+  const loadAttachments = useCallback(async () => {
+    if (!card) { setFileAttachments([]); return; }
+    const res = await fetch(`/api/attachments?cardId=${card.id}`);
+    if (res.ok) {
+      const data = await res.json();
+      setFileAttachments(data.attachments || []);
+    }
+  }, [card]);
+
   useEffect(() => { loadAssignees(); }, [loadAssignees, open]);
+  useEffect(() => { if (open) loadAttachments(); }, [loadAttachments, open]);
+
+  async function uploadFiles(files: FileList | File[]) {
+    if (!card) return;
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append("cardId", String(card.id));
+      formData.append("file", file);
+      await fetch("/api/attachments", { method: "POST", body: formData });
+    }
+    setUploading(false);
+    await loadAttachments();
+  }
+
+  async function deleteAttachment(id: number) {
+    await fetch(`/api/attachments?id=${id}`, { method: "DELETE" });
+    await loadAttachments();
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      uploadFiles(e.dataTransfer.files);
+    }
+  }
 
   useEffect(() => {
     if (card) {
@@ -167,6 +206,72 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
               onChange={(event) => setState((prev) => ({ ...prev, labels: event.target.value }))}
             />
           </div>
+
+          {/* Attachments */}
+          {card && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">Attachments</label>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                  dragOver ? "border-cyan-400 bg-cyan-400/10" : "border-white/20 hover:border-white/40"
+                }`}
+                onClick={() => document.getElementById("file-input")?.click()}
+              >
+                <p className="text-sm text-white/50">
+                  {uploading ? "Uploading..." : "Drop files here or click to upload"}
+                </p>
+                <input
+                  id="file-input"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+                />
+              </div>
+
+              {/* File list */}
+              {fileAttachments.length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {fileAttachments.map((att) => {
+                    const isImage = att.mimeType.startsWith("image/");
+                    const url = `/api/attachments/file?name=${encodeURIComponent(att.storagePath)}`;
+                    return (
+                      <div key={att.id} className="flex items-center gap-2 rounded bg-white/5 p-2">
+                        {isImage ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt={att.filename} className="h-10 w-10 rounded object-cover" />
+                          </a>
+                        ) : (
+                          <span className="text-lg shrink-0">📎</span>
+                        )}
+                        <a href={url} target="_blank" rel="noopener noreferrer"
+                          className="text-sm text-cyan-300 hover:underline truncate flex-1">
+                          {att.filename}
+                        </a>
+                        <span className="text-xs text-white/30">
+                          {att.size > 1048576
+                            ? `${(att.size / 1048576).toFixed(1)}MB`
+                            : `${(att.size / 1024).toFixed(0)}KB`}
+                        </span>
+                        <button
+                          onClick={() => deleteAttachment(att.id)}
+                          className="text-red-400 hover:text-red-300 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <DialogFooter className="flex justify-between">
             <div>
