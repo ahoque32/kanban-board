@@ -70,6 +70,14 @@ const commands = [
           { name: "id", description: "Task ID", type: 4, required: true },
         ],
       },
+      {
+        name: "delete",
+        description: "Delete a task",
+        type: 1,
+        options: [
+          { name: "id", description: "Task ID", type: 4, required: true },
+        ],
+      },
     ],
   },
   {

@@ -36,6 +36,7 @@ const defaultState = {
 export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved }: Props) {
   const [state, setState] = useState(defaultState);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (card) {
@@ -147,13 +148,35 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? "Saving..." : card ? "Save Changes" : "Create Task"}
-            </Button>
+          <DialogFooter className="flex justify-between">
+            <div>
+              {card && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={deleting}
+                  onClick={async () => {
+                    if (!confirm("Delete this task?")) return;
+                    setDeleting(true);
+                    const res = await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
+                    setDeleting(false);
+                    if (!res.ok) { alert("Failed to delete."); return; }
+                    await onSaved();
+                    onOpenChange(false);
+                  }}
+                >
+                  {deleting ? "Deleting..." : "Delete"}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={saving}>
+                {saving ? "Saving..." : card ? "Save Changes" : "Create Task"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -210,7 +210,18 @@ export async function POST(req: NextRequest) {
           return reply(`✅ **#${taskId}** "${card.title}" → **${lastCol.name}** 🎉`);
         }
 
-        return reply("Unknown subcommand. Use: add, list, move, assign, done", true);
+        if (sub === "delete") {
+          const taskId = getOpt("id") as number;
+
+          const card = db.select().from(cards).where(eq(cards.id, taskId)).get();
+          if (!card) return reply(`❌ Task #${taskId} not found.`, true);
+
+          db.delete(cards).where(eq(cards.id, taskId)).run();
+
+          return reply(`🗑️ **#${taskId}** "${card.title}" deleted.`);
+        }
+
+        return reply("Unknown subcommand. Use: add, list, move, assign, done, delete", true);
       }
 
       case "board": {
