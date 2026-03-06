@@ -1,17 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyKey } from "discord-interactions";
 import { getDb } from "@/lib/db";
 import { cards, columns, boards } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 
 const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || "";
 
-async function verifyDiscordRequest(req: NextRequest) {
+async function verifyDiscordRequest(req: NextRequest): Promise<{ isValid: boolean; body: string }> {
   const signature = req.headers.get("x-signature-ed25519") || "";
   const timestamp = req.headers.get("x-signature-timestamp") || "";
   const body = await req.text();
-  const isValid = await verifyKey(body, signature, timestamp, PUBLIC_KEY);
-  return { isValid, body };
+
+  if (!signature || !timestamp || !PUBLIC_KEY) {
+    return { isValid: false, body };
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const message = encoder.encode(timestamp + body);
+    const sigBytes = hexToUint8Array(signature);
+    const keyBytes = hexToUint8Array(PUBLIC_KEY);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "Ed25519", namedCurve: "Ed25519" },
+      false,
+      ["verify"]
+    );
+
+    const isValid = await crypto.subtle.verify("Ed25519", cryptoKey, sigBytes, message);
+    return { isValid, body };
+  } catch {
+    return { isValid: false, body };
+  }
+}
+
+function hexToUint8Array(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return bytes;
 }
 
 // Interaction types
@@ -57,12 +86,11 @@ export async function POST(req: NextRequest) {
         const getOpt = (n: string) => subOpts.find((o: { name: string; value: string | number }) => o.name === n)?.value;
 
         if (sub === "add") {
-          const title = getOpt("title");
-          const assignee = getOpt("assignee") || "";
-          const priority = getOpt("priority") || "med";
-          const description = getOpt("description") || "";
+          const title = getOpt("title") as string;
+          const assignee = (getOpt("assignee") as string) || "";
+          const priority = (getOpt("priority") as string) || "med";
+          const description = (getOpt("description") as string) || "";
 
-          // Get default board and first column
           const board = db.select().from(boards).limit(1).get();
           if (!board) return reply("❌ No board exists yet. Create one in the web UI first.", true);
 
@@ -75,7 +103,6 @@ export async function POST(req: NextRequest) {
             .get();
           if (!firstCol) return reply("❌ No columns on the board.", true);
 
-          // Get max position
           const existing = db
             .select()
             .from(cards)
@@ -111,8 +138,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (sub === "list") {
-          const assignee = getOpt("assignee");
-          const columnName = getOpt("column");
+          const assignee = getOpt("assignee") as string | undefined;
+          const columnName = getOpt("column") as string | undefined;
 
           const board = db.select().from(boards).limit(1).get();
           if (!board) return reply("No board exists.", true);
@@ -149,8 +176,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (sub === "move") {
-          const taskId = getOpt("id");
-          const columnName = getOpt("column");
+          const taskId = getOpt("id") as number;
+          const columnName = getOpt("column") as string;
 
           const card = db.select().from(cards).where(eq(cards.id, taskId)).get();
           if (!card) return reply(`❌ Task #${taskId} not found.`, true);
@@ -172,8 +199,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (sub === "assign") {
-          const taskId = getOpt("id");
-          const assignee = getOpt("assignee");
+          const taskId = getOpt("id") as number;
+          const assignee = getOpt("assignee") as string;
 
           const card = db.select().from(cards).where(eq(cards.id, taskId)).get();
           if (!card) return reply(`❌ Task #${taskId} not found.`, true);
@@ -188,7 +215,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (sub === "done") {
-          const taskId = getOpt("id");
+          const taskId = getOpt("id") as number;
 
           const card = db.select().from(cards).where(eq(cards.id, taskId)).get();
           if (!card) return reply(`❌ Task #${taskId} not found.`, true);
