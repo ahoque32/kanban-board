@@ -1,47 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyKey } from "discord-interactions";
 import { getDb } from "@/lib/db";
 import { cards, columns, boards } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 
 const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || "";
-
-async function verifyDiscordRequest(req: NextRequest): Promise<{ isValid: boolean; body: string }> {
-  const signature = req.headers.get("x-signature-ed25519") || "";
-  const timestamp = req.headers.get("x-signature-timestamp") || "";
-  const body = await req.text();
-
-  if (!signature || !timestamp || !PUBLIC_KEY) {
-    return { isValid: false, body };
-  }
-
-  try {
-    const encoder = new TextEncoder();
-    const message = encoder.encode(timestamp + body);
-    const sigBytes = hexToUint8Array(signature);
-    const keyBytes = hexToUint8Array(PUBLIC_KEY);
-
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      { name: "Ed25519", namedCurve: "Ed25519" },
-      false,
-      ["verify"]
-    );
-
-    const isValid = await crypto.subtle.verify("Ed25519", cryptoKey, sigBytes, message);
-    return { isValid, body };
-  } catch {
-    return { isValid: false, body };
-  }
-}
-
-function hexToUint8Array(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-  }
-  return bytes;
-}
 
 // Interaction types
 const PING = 1;
@@ -59,12 +22,16 @@ function reply(content: string, ephemeral = false) {
 }
 
 export async function POST(req: NextRequest) {
-  const { isValid, body } = await verifyDiscordRequest(req);
+  const signature = req.headers.get("x-signature-ed25519") || "";
+  const timestamp = req.headers.get("x-signature-timestamp") || "";
+  const rawBody = await req.text();
+
+  const isValid = await verifyKey(rawBody, signature, timestamp, PUBLIC_KEY);
   if (!isValid) {
     return new NextResponse("Invalid request signature", { status: 401 });
   }
 
-  const interaction = JSON.parse(body);
+  const interaction = JSON.parse(rawBody);
 
   // Handle ping (Discord verification)
   if (interaction.type === PING) {
@@ -78,12 +45,17 @@ export async function POST(req: NextRequest) {
   const { name, options } = interaction.data;
   const db = getDb();
 
+  interface SubOption {
+    name: string;
+    value: string | number;
+  }
+
   try {
     switch (name) {
       case "task": {
         const sub = options?.[0]?.name;
-        const subOpts = options?.[0]?.options || [];
-        const getOpt = (n: string) => subOpts.find((o: { name: string; value: string | number }) => o.name === n)?.value;
+        const subOpts: SubOption[] = options?.[0]?.options || [];
+        const getOpt = (n: string) => subOpts.find((o) => o.name === n)?.value;
 
         if (sub === "add") {
           const title = getOpt("title") as string;
