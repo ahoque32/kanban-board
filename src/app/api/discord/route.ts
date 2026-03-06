@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         if (sub === "add") {
           const title = getOpt("title") as string;
           const assignee = (getOpt("assignee") as string) || "";
-          const priority = (getOpt("priority") as string) || "med";
+          const priority = ((getOpt("priority") as string) || "med") as "low" | "med" | "high";
           const description = (getOpt("description") as string) || "";
 
           const board = db.select().from(boards).limit(1).get();
