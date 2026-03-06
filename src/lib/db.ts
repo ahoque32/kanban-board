@@ -20,7 +20,12 @@ function init() {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
   _sqlite = new Database(dbPath);
-  _sqlite.pragma("journal_mode = WAL");
+  // Use DELETE journal mode for GCS FUSE compatibility (WAL requires shared memory)
+  const isGcsFuse = dbPath.startsWith("/app/data") && process.env.NODE_ENV === "production";
+  _sqlite.pragma(isGcsFuse ? "journal_mode = DELETE" : "journal_mode = WAL");
+  if (isGcsFuse) {
+    _sqlite.pragma("synchronous = FULL");
+  }
   _db = drizzle(_sqlite);
 
   return { sqlite: _sqlite, db: _db };

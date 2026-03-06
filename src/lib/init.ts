@@ -91,5 +91,34 @@ export async function ensureDbInitialized() {
     await db.insert(settings).values({ id: 1, discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL ?? null });
   }
 
+  // Auto-cleanup: delete tasks in "Done" column for 60+ hours
+  cleanupDoneTasks();
+
   initialized = true;
+}
+
+let lastCleanup = 0;
+function cleanupDoneTasks() {
+  const now = Date.now();
+  // Only run cleanup once per hour
+  if (now - lastCleanup < 3600000) return;
+  lastCleanup = now;
+
+  try {
+    const allCols = db.select().from(columns).all();
+    const doneCols = allCols.filter((c) => c.name.toLowerCase() === "done");
+    if (doneCols.length === 0) return;
+
+    const doneColIds = doneCols.map((c) => c.id);
+    const allCards = db.select().from(cards).all();
+    const cutoff = new Date(now - 60 * 60 * 60 * 1000).toISOString(); // 60 hours ago
+
+    for (const card of allCards) {
+      if (doneColIds.includes(card.columnId) && card.updatedAt < cutoff) {
+        db.delete(cards).where(eq(cards.id, card.id)).run();
+      }
+    }
+  } catch {
+    // Silently ignore cleanup errors
+  }
 }
