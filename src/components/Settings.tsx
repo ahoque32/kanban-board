@@ -30,6 +30,8 @@ export function Settings({ onSaved }: Props) {
   const [globalUrl, setGlobalUrl] = useState("");
   const [webhookList, setWebhookList] = useState<Webhook[]>([]);
   const [assignees, setAssignees] = useState<string[]>([]);
+  const [assigneeList, setAssigneeList] = useState<{ id: number; name: string }[]>([]);
+  const [newAssigneeName, setNewAssigneeName] = useState("");
   const [saving, setSaving] = useState(false);
 
   // New webhook form
@@ -46,9 +48,36 @@ export function Settings({ onSaved }: Props) {
     if (!newAssignee && data.assignees?.length) setNewAssignee(data.assignees[0]);
   }
 
+  async function loadAssignees() {
+    const res = await fetch("/api/assignees");
+    if (res.ok) {
+      const data = await res.json();
+      setAssigneeList(data.assignees || []);
+    }
+  }
+
+  async function addAssignee() {
+    if (!newAssigneeName.trim()) return;
+    await fetch("/api/assignees", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newAssigneeName.trim() }),
+    });
+    setNewAssigneeName("");
+    await loadAssignees();
+    await loadWebhooks();
+  }
+
+  async function removeAssignee(id: number) {
+    await fetch(`/api/assignees?id=${id}`, { method: "DELETE" });
+    await loadAssignees();
+    await loadWebhooks();
+  }
+
   useEffect(() => {
     if (!open) return;
     loadWebhooks();
+    loadAssignees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -110,6 +139,43 @@ export function Settings({ onSaved }: Props) {
             Route task notifications to different Discord channels per assignee.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Team Members */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-white/70">
+            Team Members
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {assigneeList.map((a) => (
+              <span
+                key={a.id}
+                className="inline-flex items-center gap-1 rounded-full bg-cyan-500/20 px-3 py-1 text-sm text-cyan-300"
+              >
+                {a.name}
+                <button
+                  onClick={() => removeAssignee(a.id)}
+                  className="ml-1 text-red-400 hover:text-red-300 text-xs"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="New team member name"
+              value={newAssigneeName}
+              onChange={(e) => setNewAssigneeName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addAssignee()}
+              className="flex-1"
+            />
+            <Button onClick={addAssignee} disabled={!newAssigneeName.trim()} size="sm">
+              Add
+            </Button>
+          </div>
+        </div>
+
+        <hr className="border-white/10 my-2" />
 
         {/* Global fallback webhook */}
         <div className="space-y-2">

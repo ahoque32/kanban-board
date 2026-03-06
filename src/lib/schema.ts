@@ -48,5 +48,12 @@ export const webhooks = sqliteTable("webhooks", {
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
-export const ASSIGNEES = ["Ahawk", "Tawfiq", "Luke"] as const;
-export type Assignee = (typeof ASSIGNEES)[number];
+// Default assignees — actual list is stored in DB settings and editable from UI
+export const DEFAULT_ASSIGNEES = ["Ahawk", "Luke"];
+export type Assignee = string;
+
+export const assignees = sqliteTable("assignees", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});

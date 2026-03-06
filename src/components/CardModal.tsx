@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +37,17 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
   const [state, setState] = useState(defaultState);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [assigneeOptions, setAssigneeOptions] = useState<string[]>([]);
+
+  const loadAssignees = useCallback(async () => {
+    const res = await fetch("/api/assignees");
+    if (res.ok) {
+      const data = await res.json();
+      setAssigneeOptions(data.assignees.map((a: { name: string }) => a.name));
+    }
+  }, []);
+
+  useEffect(() => { loadAssignees(); }, [loadAssignees, open]);
 
   useEffect(() => {
     if (card) {
@@ -114,11 +125,20 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
           />
 
           <div className="grid gap-3 md:grid-cols-2">
-            <Input
-              placeholder="Assignee (Ahawk, Tawfiq, Luke)"
-              value={state.assignee}
-              onChange={(event) => setState((prev) => ({ ...prev, assignee: event.target.value }))}
-            />
+            <Select
+              value={state.assignee || "__none__"}
+              onValueChange={(value) => setState((prev) => ({ ...prev, assignee: value === "__none__" ? "" : value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Unassigned</SelectItem>
+                {assigneeOptions.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input
               type="date"
               value={state.dueDate}

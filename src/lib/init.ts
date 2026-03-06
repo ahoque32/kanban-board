@@ -1,6 +1,6 @@
 import { count, eq } from "drizzle-orm";
 import { db, sqlite } from "@/lib/db";
-import { boards, cards, columns, settings } from "@/lib/schema";
+import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES } from "@/lib/schema";
 
 let initialized = false;
 
@@ -44,6 +44,12 @@ export async function ensureDbInitialized() {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS assignees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS webhooks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       assignee TEXT NOT NULL,
@@ -83,6 +89,14 @@ export async function ensureDbInitialized() {
         labels: JSON.stringify(["welcome"]),
         position: 0,
       });
+    }
+  }
+
+  // Seed default assignees
+  const [existingAssignees] = await db.select({ value: count() }).from(assignees);
+  if ((existingAssignees?.value ?? 0) === 0) {
+    for (const name of DEFAULT_ASSIGNEES) {
+      await db.insert(assignees).values({ name }).onConflictDoNothing();
     }
   }
 

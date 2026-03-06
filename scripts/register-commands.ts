@@ -9,7 +9,6 @@ const GUILD_ID = process.env.DISCORD_GUILD_ID || "1477891199938461799";
 
 const ASSIGNEE_CHOICES = [
   { name: "Ahawk", value: "Ahawk" },
-  { name: "Tawfiq", value: "Tawfiq" },
   { name: "Luke", value: "Luke" },
 ];
 
