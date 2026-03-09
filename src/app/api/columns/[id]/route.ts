@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
 import { columns } from "@/lib/schema";
 
@@ -8,8 +9,13 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: NextRequest, { params }: Params) {
   await ensureDbInitialized();
+
+  const auth = requireAdmin(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
   const columnId = Number(id);

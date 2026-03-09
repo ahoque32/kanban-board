@@ -1,8 +1,10 @@
-import { asc, eq, max } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { and, asc, eq, max } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import { sendDiscordTaskNotification } from "@/lib/discord";
 import { ensureDbInitialized } from "@/lib/init";
+import { cardVisibilityCondition } from "@/lib/permissions";
 import { cards, columns, priorities } from "@/lib/schema";
 
 function safeLabels(raw: unknown): string[] {
@@ -12,9 +14,18 @@ function safeLabels(raw: unknown): string[] {
     .filter((value): value is string => Boolean(value));
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await ensureDbInitialized();
-  const list = await db.select().from(cards).orderBy(asc(cards.position), asc(cards.id));
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const visibility = cardVisibilityCondition(auth.user);
+  const query = db.select().from(cards).orderBy(asc(cards.position), asc(cards.id));
+  const list = visibility ? await query.where(visibility) : await query;
+
   return NextResponse.json({
     cards: list.map((card) => ({
       ...card,
@@ -23,8 +34,14 @@ export async function GET() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json();
 
   const title = (body.title || "").toString().trim();
@@ -35,6 +52,10 @@ export async function POST(request: Request) {
   const boardId = Number(body.boardId ?? 1);
   const columnId = Number(body.columnId);
   const priority = priorities.includes(body.priority) ? body.priority : "med";
+
+  if (!columnId || Number.isNaN(columnId)) {
+    return NextResponse.json({ error: "Valid columnId is required" }, { status: 400 });
+  }
 
   const [maxPosition] = await db.select({ value: max(cards.position) }).from(cards).where(eq(cards.columnId, columnId));
 
@@ -50,6 +71,7 @@ export async function POST(request: Request) {
       priority,
       labels: JSON.stringify(safeLabels(body.labels)),
       position: (maxPosition?.value ?? -1) + 1,
+      createdBy: auth.user.id,
       updatedAt: new Date().toISOString(),
     })
     .returning();
