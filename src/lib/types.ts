@@ -1,12 +1,4 @@
 export type Priority = "low" | "med" | "high";
-export type UserRole = "admin" | "user";
-
-export type CurrentUser = {
-  id: number;
-  email: string;
-  name: string;
-  role: UserRole;
-};
 
 export type KanbanCard = {
   id: number;
@@ -53,5 +45,4 @@ export type BoardResponse = {
   board: KanbanBoard;
   columns: KanbanColumn[];
   cards: KanbanCard[];
-  user: CurrentUser;
 };

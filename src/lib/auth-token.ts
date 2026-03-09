@@ -21,7 +21,16 @@ function getJwtSecret() {
 }
 
 export async function createAuthToken(user: AuthUser): Promise<string> {
-  return signJwt(user, TOKEN_TTL_SECONDS, getJwtSecret());
+  return signJwt(
+    {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    },
+    TOKEN_TTL_SECONDS,
+    getJwtSecret(),
+  );
 }
 
 export async function verifyAuthToken(token: string): Promise<AuthUser | null> {
