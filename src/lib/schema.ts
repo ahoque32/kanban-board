@@ -29,6 +29,7 @@ export const cards = sqliteTable("cards", {
   priority: text("priority", { enum: priorities }).notNull().default("med"),
   labels: text("labels").notNull().default("[]"),
   position: integer("position").notNull().default(0),
+  createdBy: integer("created_by"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
@@ -45,6 +46,15 @@ export const webhooks = sqliteTable("webhooks", {
   webhookUrl: text("webhook_url").notNull(),
   label: text("label").notNull().default(""),
   enabled: integer("enabled").notNull().default(1),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  role: text("role", { enum: ["admin", "user"] }).notNull().default("user"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 

@@ -1,17 +1,30 @@
 import { asc, eq, max } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
 import { columns } from "@/lib/schema";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const list = await db.select().from(columns).orderBy(asc(columns.position));
   return NextResponse.json({ columns: list });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAdmin(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
 
   const name = (body.name || "").toString().trim();

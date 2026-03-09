@@ -1,7 +1,9 @@
 import { asc } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
+import { cardVisibilityCondition } from "@/lib/permissions";
 import { boards, cards, columns } from "@/lib/schema";
 
 function parseLabels(value: string) {
@@ -13,17 +15,25 @@ function parseLabels(value: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const board = await db.select().from(boards).limit(1);
   if (!board[0]) {
     return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }
 
-  const [allColumns, allCards] = await Promise.all([
+  const cardQuery = db.select().from(cards).orderBy(asc(cards.position), asc(cards.id));
+  const visibility = cardVisibilityCondition(auth.user);
+
+  const [allColumns, visibleCards] = await Promise.all([
     db.select().from(columns).orderBy(asc(columns.position)),
-    db.select().from(cards).orderBy(asc(cards.position), asc(cards.id)),
+    visibility ? cardQuery.where(visibility) : cardQuery,
   ]);
 
   return NextResponse.json({
@@ -40,7 +50,7 @@ export async function GET() {
       position: column.position,
       createdAt: column.createdAt,
     })),
-    cards: allCards.map((card) => ({
+    cards: visibleCards.map((card) => ({
       id: card.id,
       boardId: card.boardId,
       columnId: card.columnId,
@@ -51,14 +61,21 @@ export async function GET() {
       priority: card.priority,
       labels: parseLabels(card.labels),
       position: card.position,
+      createdBy: card.createdBy,
       createdAt: card.createdAt,
       updatedAt: card.updatedAt,
     })),
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAdmin(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
 
   const name = (body.name || "KanbanFlow").toString().trim();

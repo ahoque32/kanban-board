@@ -1,17 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import { assignees } from "@/lib/schema";
 import { ensureDbInitialized } from "@/lib/init";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const all = db.select().from(assignees).all();
   return NextResponse.json({ assignees: all });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAdmin(req);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { name } = await req.json();
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -25,8 +38,14 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   await ensureDbInitialized();
+
+  const auth = requireAdmin(req);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const id = Number(searchParams.get("id"));
   if (!id) {

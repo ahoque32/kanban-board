@@ -1,12 +1,18 @@
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ensureDbInitialized } from "@/lib/init";
 import { settings, webhooks, assignees as assigneesTable } from "@/lib/schema";
+import { requireSession } from "@/lib/session";
 
 // GET — return all webhooks + global setting
-export async function GET() {
+export async function GET(request: NextRequest) {
   await ensureDbInitialized();
+  const { response, user } = requireSession(request);
+  if (response || !user) return response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (user.role !== "admin") {
+    return NextResponse.json({ error: "Only admins can view webhook settings" }, { status: 403 });
+  }
 
   const [global] = await db.select().from(settings).where(eq(settings.id, 1)).limit(1);
   const allWebhooks = await db.select().from(webhooks);
@@ -25,8 +31,14 @@ export async function GET() {
 }
 
 // POST — add or update webhooks
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   await ensureDbInitialized();
+  const { response, user } = requireSession(request);
+  if (response || !user) return response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (user.role !== "admin") {
+    return NextResponse.json({ error: "Only admins can update webhook settings" }, { status: 403 });
+  }
+
   const body = await request.json();
 
   // Update global webhook

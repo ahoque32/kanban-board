@@ -11,6 +11,7 @@ export type KanbanCard = {
   priority: Priority;
   labels: string[];
   position: number;
+  createdBy: number | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { and, eq, or } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import { sendDiscordTaskNotification } from "@/lib/discord";
 import { ensureDbInitialized } from "@/lib/init";
 import { cards, columns, priorities } from "@/lib/schema";
@@ -16,8 +17,22 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
-export async function PATCH(request: Request, { params }: Params) {
+function userCardScope(user: { id: number; role: "admin" | "user"; name: string }, cardId: number) {
+  if (user.role === "admin") {
+    return eq(cards.id, cardId);
+  }
+
+  return and(eq(cards.id, cardId), or(eq(cards.createdBy, user.id), eq(cards.assignee, user.name)));
+}
+
+export async function PATCH(request: NextRequest, { params }: Params) {
   await ensureDbInitialized();
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
   const cardId = Number(id);
 
@@ -26,7 +41,8 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const body = await request.json();
-  const existing = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1);
+  const scope = userCardScope(auth.user, cardId);
+  const existing = await db.select().from(cards).where(scope).limit(1);
 
   if (!existing[0]) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
@@ -95,13 +111,25 @@ export async function PATCH(request: Request, { params }: Params) {
   });
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   await ensureDbInitialized();
+
+  const auth = requireAuth(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
   const cardId = Number(id);
 
   if (Number.isNaN(cardId)) {
     return NextResponse.json({ error: "Invalid card id" }, { status: 400 });
+  }
+
+  const scope = userCardScope(auth.user, cardId);
+  const existing = await db.select({ id: cards.id }).from(cards).where(scope).limit(1);
+  if (!existing[0]) {
+    return NextResponse.json({ error: "Card not found" }, { status: 404 });
   }
 
   await db.delete(cards).where(eq(cards.id, cardId));
