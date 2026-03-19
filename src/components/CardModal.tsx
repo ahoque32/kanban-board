@@ -191,12 +191,15 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
         <DialogHeader>
           <DialogTitle>{card ? "Edit Task" : "Create Task"}</DialogTitle>
           <DialogDescription>Define title, assignee, due date, priority, and labels.</DialogDescription>
-          {card?.createdByName && (
-            <p className="text-xs text-slate-400 mt-1">Reporter: {card.createdByName}</p>
-          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3">
+          {card && (
+            <div className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 font-medium">
+              📝 Created by: {card.createdByName || "Unknown"}
+            </div>
+          )}
+
           <Input
             required
             placeholder="Task title"
