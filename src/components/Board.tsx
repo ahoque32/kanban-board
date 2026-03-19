@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { DndContext, DragEndEvent, PointerSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, PointerSensor, TouchSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CardModal } from "@/components/CardModal";
@@ -49,7 +49,10 @@ export function Board() {
     card: null,
   });
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
 
   async function loadBoard() {
     setLoading(true);
