@@ -1,8 +1,18 @@
+import bcrypt from "bcryptjs";
 import { count, eq } from "drizzle-orm";
 import { db, sqlite } from "@/lib/db";
-import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES } from "@/lib/schema";
+import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, users } from "@/lib/schema";
 
 let initialized = false;
+
+const ADMIN_EMAIL = "ahawkhoque@gmail.com";
+const ADMIN_PASSWORD = "admin123";
+const ADMIN_NAME = "Ahawk";
+
+function hasColumn(table: string, columnName: string) {
+  const tableInfo = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return tableInfo.some((column) => column.name === columnName);
+}
 
 export async function ensureDbInitialized() {
   if (initialized) return;
@@ -68,7 +78,20 @@ export async function ensureDbInitialized() {
       enabled INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  if (!hasColumn("cards", "created_by")) {
+    sqlite.exec("ALTER TABLE cards ADD COLUMN created_by INTEGER;");
+  }
 
   const [existingBoard] = await db.select({ value: count() }).from(boards);
   if ((existingBoard?.value ?? 0) === 0) {
@@ -114,6 +137,17 @@ export async function ensureDbInitialized() {
   if ((existingSettings?.value ?? 0) === 0) {
     await db.insert(settings).values({ id: 1, discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL ?? null });
   }
+
+  const adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
+  await db
+    .insert(users)
+    .values({
+      email: ADMIN_EMAIL,
+      passwordHash: adminPasswordHash,
+      name: ADMIN_NAME,
+      role: "admin",
+    })
+    .onConflictDoNothing();
 
   // Auto-cleanup: delete tasks in "Done" column for 60+ hours
   cleanupDoneTasks();

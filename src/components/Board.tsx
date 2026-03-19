@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { DndContext, DragEndEvent, PointerSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
+import { Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CardModal } from "@/components/CardModal";
 import { Column } from "@/components/Column";
 import { FilterBar } from "@/components/FilterBar";
-import { Settings } from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BoardResponse, KanbanCard, KanbanColumn } from "@/lib/types";
@@ -22,12 +23,20 @@ type ModalState =
       card: KanbanCard | null;
     };
 
+type SessionUser = {
+  id: number;
+  email: string;
+  name: string;
+  role: "admin" | "user";
+};
+
 export function Board() {
   const [boardName, setBoardName] = useState("KanbanFlow");
   const [boardId, setBoardId] = useState(1);
   const [columns, setColumns] = useState<KanbanColumn[]>([]);
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
 
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -53,14 +62,25 @@ export function Board() {
     setLoading(false);
   }
 
+  async function loadSession() {
+    const response = await fetch("/api/auth/me", { cache: "no-store" });
+    if (!response.ok) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const data = await response.json();
+    setSessionUser(data.user);
+  }
+
   useEffect(() => {
+    loadSession();
     loadBoard();
   }, []);
 
   const assignees = useMemo(() => {
     const names = new Set(cards.map((card) => card.assignee.trim()).filter(Boolean));
-    const preferred = ["Ahawk", "Tawfiq", "Luke"];
-    preferred.forEach((name) => names.add(name));
+    preferredAssignees.forEach((name) => names.add(name));
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [cards]);
 
@@ -149,9 +169,16 @@ export function Board() {
     await loadBoard();
   }
 
-  if (loading) {
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
+  if (loading || !sessionUser) {
     return <div className="p-8 text-sm text-slate-100">Loading board...</div>;
   }
+
+  const isAdmin = sessionUser.role === "admin";
 
   return (
     <main className="relative min-h-screen overflow-hidden px-4 py-8 md:px-8">
@@ -159,10 +186,20 @@ export function Board() {
         <header className="glass glass-toolbar mb-4 flex flex-wrap items-center justify-between gap-3 p-5">
           <div className="content-layer">
             <h1 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">{boardName}</h1>
-            <p className="text-sm text-slate-100">Public board, no auth required</p>
+            <p className="text-sm text-slate-100">Authenticated board</p>
           </div>
           <div className="content-layer flex items-center gap-2">
-            <Settings onSaved={loadBoard} />
+            {isAdmin ? (
+              <Link href="/settings" className="inline-flex items-center justify-center rounded-md p-2 text-white/80 hover:bg-white/10 hover:text-white">
+                <SettingsIcon className="h-5 w-5" />
+              </Link>
+            ) : null}
+            <div className="rounded-full bg-white/10 px-3 py-2 text-sm text-white">
+              {sessionUser.name}
+            </div>
+            <Button variant="ghost" onClick={handleLogout}>
+              Logout
+            </Button>
             <Button variant="primary" onClick={() => openCreate(columns[0]?.id ?? 1)}>
               New Task
             </Button>
@@ -181,22 +218,24 @@ export function Board() {
           />
         </div>
 
-        <div className="glass mb-5 flex items-center gap-2 p-3">
-          <Input
-            placeholder="Add custom column"
-            value={newColumn}
-            onChange={(event) => setNewColumn(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                createColumn();
-              }
-            }}
-          />
-          <Button variant="primary" onClick={createColumn}>
-            Add Column
-          </Button>
-        </div>
+        {isAdmin ? (
+          <div className="glass mb-5 flex items-center gap-2 p-3">
+            <Input
+              placeholder="Add custom column"
+              value={newColumn}
+              onChange={(event) => setNewColumn(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  createColumn();
+                }
+              }}
+            />
+            <Button variant="primary" onClick={createColumn}>
+              Add Column
+            </Button>
+          </div>
+        ) : null}
 
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-6">
@@ -238,3 +277,5 @@ export function Board() {
     </main>
   );
 }
+
+const preferredAssignees = ["Ahawk", "Tawfiq", "Luke"];
