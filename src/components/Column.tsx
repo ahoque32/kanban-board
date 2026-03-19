@@ -21,7 +21,10 @@ export function Column({ column, cards, onAddCard, onCardClick }: Props) {
   });
 
   return (
-    <section className="glass glass-column flex min-h-[26rem] w-[20rem] flex-shrink-0 flex-col p-4">
+    <section
+      ref={setNodeRef}
+      className={`glass glass-column flex min-h-[26rem] w-[20rem] flex-shrink-0 flex-col p-4 transition ${isOver ? "ring-2 ring-cyan-400/40" : ""}`}
+    >
       <div className="content-layer mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white">{column.name}</h2>
@@ -33,8 +36,7 @@ export function Column({ column, cards, onAddCard, onCardClick }: Props) {
       </div>
 
       <div
-        ref={setNodeRef}
-        className={`content-layer flex flex-1 flex-col gap-3 rounded-2xl p-1 transition ${isOver ? "bg-white/12" : ""}`}
+        className="content-layer flex flex-1 flex-col gap-3 rounded-2xl p-1"
       >
         <SortableContext items={cards.map((card) => card.id)} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
