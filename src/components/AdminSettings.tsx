@@ -324,17 +324,28 @@ export function AdminSettings() {
             <div className="space-y-2">
               {users.map((user) => (
                 <div key={user.id} className="rounded-lg bg-white/5 px-3 py-2 flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm text-white font-medium">{user.name}</p>
-                    <p className="text-xs text-slate-100">{user.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-white font-medium">{user.name}</p>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          user.role === "admin"
+                            ? "bg-amber-500/20 text-amber-300"
+                            : "bg-slate-500/20 text-slate-300"
+                        }`}
+                      >
+                        {user.role === "admin" ? "Admin" : "Member"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-100 truncate">{user.email}</p>
                   </div>
                   <select
                     className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
                     value={user.role}
                     onChange={(event) => updateRole(user.id, event.target.value as "admin" | "user")}
                   >
-                    <option value="user">user</option>
-                    <option value="admin">admin</option>
+                    <option value="user">Member</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
               ))}
