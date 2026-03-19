@@ -27,8 +27,7 @@ export function AdminSettings() {
   const [globalUrl, setGlobalUrl] = useState("");
   const [webhookList, setWebhookList] = useState<Webhook[]>([]);
   const [assignees, setAssignees] = useState<string[]>([]);
-  const [assigneeList, setAssigneeList] = useState<{ id: number; name: string }[]>([]);
-  const [newAssigneeName, setNewAssigneeName] = useState("");
+
   const [saving, setSaving] = useState(false);
 
   const [assignMode, setAssignMode] = useState<"restricted" | "unrestricted">("restricted");
@@ -50,13 +49,6 @@ export function AdminSettings() {
     if (!newAssignee && data.assignees?.length) setNewAssignee(data.assignees[0]);
   }
 
-  async function loadAssignees() {
-    const res = await fetch("/api/assignees", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      setAssigneeList(data.assignees || []);
-    }
-  }
 
   async function loadUsers() {
     const res = await fetch("/api/users", { cache: "no-store" });
@@ -66,23 +58,6 @@ export function AdminSettings() {
     }
   }
 
-  async function addAssignee() {
-    if (!newAssigneeName.trim()) return;
-    await fetch("/api/assignees", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newAssigneeName.trim() }),
-    });
-    setNewAssigneeName("");
-    await loadAssignees();
-    await loadWebhooks();
-  }
-
-  async function removeAssignee(id: number) {
-    await fetch(`/api/assignees?id=${id}`, { method: "DELETE" });
-    await loadAssignees();
-    await loadWebhooks();
-  }
 
   async function saveGlobal() {
     setSaving(true);
@@ -185,7 +160,6 @@ export function AdminSettings() {
 
   useEffect(() => {
     loadWebhooks();
-    loadAssignees();
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -197,7 +171,7 @@ export function AdminSettings() {
           <div className="content-layer flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-white">Admin Settings</h1>
-              <p className="text-sm text-slate-100">Manage webhooks, assignees, and users.</p>
+              <p className="text-sm text-slate-100">Manage webhooks and users.</p>
             </div>
             <Link
               href="/"
@@ -208,40 +182,6 @@ export function AdminSettings() {
             </Link>
           </div>
         </header>
-
-        <section className="glass p-5 space-y-3">
-          <div className="content-layer space-y-3">
-            <h2 className="text-lg font-semibold text-white">Team Members</h2>
-            <div className="flex flex-wrap gap-2">
-              {assigneeList.map((a) => (
-                <span
-                  key={a.id}
-                  className="inline-flex items-center gap-1 rounded-full bg-cyan-500/20 px-3 py-1 text-sm text-cyan-300"
-                >
-                  {a.name}
-                  <button
-                    onClick={() => removeAssignee(a.id)}
-                    className="ml-1 text-red-400 hover:text-red-300 text-xs"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="New team member name"
-                value={newAssigneeName}
-                onChange={(e) => setNewAssigneeName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addAssignee()}
-                className="flex-1"
-              />
-              <Button onClick={addAssignee} disabled={!newAssigneeName.trim()} size="sm">
-                Add
-              </Button>
-            </div>
-          </div>
-        </section>
 
         <section className="glass p-5 space-y-3">
           <div className="content-layer space-y-3">
