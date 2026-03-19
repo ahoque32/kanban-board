@@ -7,6 +7,8 @@ type CardAccessShape = {
 
 export function canAccessCard(user: AuthUser, card: CardAccessShape): boolean {
   if (user.role === "admin") return true;
+  // Allow access to cards with null createdBy (Discord/system-created)
+  if (card.createdBy === null) return true;
   const assignedToUser = card.assignee.trim().toLowerCase() === user.name.trim().toLowerCase();
   return assignedToUser || card.createdBy === user.id;
 }
