@@ -138,21 +138,25 @@ export async function ensureDbInitialized() {
     await db.insert(settings).values({ id: 1, discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL ?? null });
   }
 
+  // Ensure admin user exists with correct email
   const adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
-  await db
-    .insert(users)
-    .values({
+  const [existingAdmin] = await db.select().from(users).where(eq(users.role, "admin")).limit(1);
+
+  if (!existingAdmin) {
+    // Fresh DB — create admin user
+    await db.insert(users).values({
       email: ADMIN_EMAIL,
       passwordHash: adminPasswordHash,
       name: ADMIN_NAME,
       role: "admin",
-    })
-    .onConflictDoNothing();
-
-  // Migrate admin email if it was changed (e.g. from ahawkhoque@gmail.com)
-  const [adminUser] = await db.select().from(users).where(eq(users.name, ADMIN_NAME)).limit(1);
-  if (adminUser && adminUser.email !== ADMIN_EMAIL) {
-    await db.update(users).set({ email: ADMIN_EMAIL }).where(eq(users.id, adminUser.id));
+    });
+  } else if (existingAdmin.email !== ADMIN_EMAIL) {
+    // Admin exists with old email — delete any duplicate with the new email first, then update
+    const [duplicate] = await db.select().from(users).where(eq(users.email, ADMIN_EMAIL)).limit(1);
+    if (duplicate) {
+      await db.delete(users).where(eq(users.id, duplicate.id));
+    }
+    await db.update(users).set({ email: ADMIN_EMAIL }).where(eq(users.id, existingAdmin.id));
   }
 
   // Auto-cleanup: delete tasks in "Done" column for 60+ hours
