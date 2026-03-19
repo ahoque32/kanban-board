@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -172,9 +174,18 @@ export function AdminSettings() {
     <main className="relative min-h-screen overflow-hidden px-4 py-8 md:px-8">
       <div className="mx-auto max-w-5xl space-y-5">
         <header className="glass p-5">
-          <div className="content-layer">
-            <h1 className="text-2xl font-semibold text-white">Admin Settings</h1>
-            <p className="text-sm text-slate-100">Manage webhooks, assignees, and users.</p>
+          <div className="content-layer flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-white">Admin Settings</h1>
+              <p className="text-sm text-slate-100">Manage webhooks, assignees, and users.</p>
+            </div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Board
+            </Link>
           </div>
         </header>
 
