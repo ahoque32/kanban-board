@@ -330,6 +330,7 @@ export function Board() {
           boardId={boardId}
           columnId={modalState.columnId}
           card={modalState.card}
+          sessionUser={sessionUser}
           onSaved={loadBoard}
         />
       </div>
