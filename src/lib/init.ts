@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { count, eq } from "drizzle-orm";
+import { count, eq, isNull } from "drizzle-orm";
 import { db, sqlite } from "@/lib/db";
 import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, users } from "@/lib/schema";
 
@@ -114,6 +114,15 @@ export async function ensureDbInitialized() {
 
   if (!hasColumn("users", "assign_mode")) {
     sqlite.exec("ALTER TABLE users ADD COLUMN assign_mode TEXT NOT NULL DEFAULT 'restricted';");
+  }
+
+  // Backfill null createdBy to admin user
+  const nullCreatedByCards = db.select({ id: cards.id }).from(cards).where(isNull(cards.createdBy)).all();
+  if (nullCreatedByCards.length > 0) {
+    const [admin] = db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1).all();
+    if (admin) {
+      sqlite.exec(`UPDATE cards SET created_by = ${admin.id} WHERE created_by IS NULL;`);
+    }
   }
 
   const [existingBoard] = await db.select({ value: count() }).from(boards);
