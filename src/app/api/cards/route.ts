@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
       card: {
         ...created[0],
         labels: JSON.parse(created[0].labels || "[]"),
+        createdByName: auth.user.name,
       },
     },
     { status: 201 },
