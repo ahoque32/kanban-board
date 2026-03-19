@@ -116,11 +116,17 @@ export function Board() {
     loadBoard();
   }, []);
 
+  const [registeredUsers, setRegisteredUsers] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/assignees").then((r) => r.ok ? r.json() : { assignees: [] }).then((d) => {
+      setRegisteredUsers(d.assignees.map((a: { name: string }) => a.name));
+    });
+  }, []);
+
   const assignees = useMemo(() => {
-    const names = new Set(cards.map((card) => card.assignee.trim()).filter(Boolean));
-    preferredAssignees.forEach((name) => names.add(name));
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [cards]);
+    return Array.from(new Set(registeredUsers)).sort((a, b) => a.localeCompare(b));
+  }, [registeredUsers]);
 
   const filteredCards = useMemo(() => {
     const targetLabel = labelFilter.trim().toLowerCase();
@@ -429,4 +435,4 @@ export function Board() {
   );
 }
 
-const preferredAssignees = ["Ahawk", "Tawfiq", "Luke"];
+
