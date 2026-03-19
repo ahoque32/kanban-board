@@ -15,12 +15,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import type { KanbanCard, Priority, Attachment } from "@/lib/types";
 
+type SessionUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "user";
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   boardId: number;
   columnId: number;
   card?: KanbanCard | null;
+  sessionUser?: SessionUser | null;
   onSaved: () => Promise<void>;
 };
 
@@ -33,7 +41,7 @@ const defaultState = {
   labels: "",
 };
 
-export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved }: Props) {
+export function CardModal({ open, onOpenChange, boardId, columnId, card, sessionUser, onSaved }: Props) {
   const [state, setState] = useState(defaultState);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -88,6 +96,8 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
     }
   }
 
+  const isAdmin = sessionUser?.role === "admin";
+
   useEffect(() => {
     if (card) {
       setState({
@@ -100,8 +110,12 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
       });
       return;
     }
-    setState(defaultState);
-  }, [card, open]);
+    // Auto-assign to current user for non-admins on new cards
+    setState({
+      ...defaultState,
+      assignee: !isAdmin && sessionUser?.name ? sessionUser.name : "",
+    });
+  }, [card, open, isAdmin, sessionUser?.name]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -167,12 +181,13 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, onSaved
             <Select
               value={state.assignee || "__none__"}
               onValueChange={(value) => setState((prev) => ({ ...prev, assignee: value === "__none__" ? "" : value }))}
+              disabled={!isAdmin && !card}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Assignee" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Unassigned</SelectItem>
+                {isAdmin && <SelectItem value="__none__">Unassigned</SelectItem>}
                 {assigneeOptions.map((name) => (
                   <SelectItem key={name} value={name}>{name}</SelectItem>
                 ))}
