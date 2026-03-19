@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireAdmin, requireAuth } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
 import { cardVisibilityCondition } from "@/lib/permissions";
-import { boards, cards, columns } from "@/lib/schema";
+import { boards, cards, columns, users } from "@/lib/schema";
 
 function parseLabels(value: string) {
   try {
@@ -36,6 +36,11 @@ export async function GET(request: NextRequest) {
     visibility ? cardQuery.where(visibility) : cardQuery,
   ]);
 
+  // Resolve createdBy IDs to names
+  const allUsers = db.select({ id: users.id, name: users.name }).from(users).all();
+  const userMap: Record<number, string> = {};
+  for (const u of allUsers) userMap[u.id] = u.name;
+
   return NextResponse.json({
     board: {
       id: board[0].id,
@@ -62,6 +67,7 @@ export async function GET(request: NextRequest) {
       labels: parseLabels(card.labels),
       position: card.position,
       createdBy: card.createdBy,
+      createdByName: card.createdBy ? (userMap[card.createdBy] || "Unknown") : null,
       createdAt: card.createdAt,
       updatedAt: card.updatedAt,
     })),
