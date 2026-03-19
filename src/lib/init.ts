@@ -5,7 +5,7 @@ import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, users }
 
 let initialized = false;
 
-const ADMIN_EMAIL = "ahawkhoque@gmail.com";
+const ADMIN_EMAIL = "admin@renderwise.net";
 const ADMIN_PASSWORD = "admin123";
 const ADMIN_NAME = "Ahawk";
 
@@ -148,6 +148,12 @@ export async function ensureDbInitialized() {
       role: "admin",
     })
     .onConflictDoNothing();
+
+  // Migrate admin email if it was changed (e.g. from ahawkhoque@gmail.com)
+  const [adminUser] = await db.select().from(users).where(eq(users.name, ADMIN_NAME)).limit(1);
+  if (adminUser && adminUser.email !== ADMIN_EMAIL) {
+    await db.update(users).set({ email: ADMIN_EMAIL }).where(eq(users.id, adminUser.id));
+  }
 
   // Auto-cleanup: delete tasks in "Done" column for 60+ hours
   cleanupDoneTasks();
