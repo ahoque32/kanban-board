@@ -30,6 +30,7 @@ export function AdminSettings() {
   const [newAssigneeName, setNewAssigneeName] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [assignMode, setAssignMode] = useState<"restricted" | "unrestricted">("restricted");
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
@@ -42,6 +43,7 @@ export function AdminSettings() {
     const res = await fetch("/api/webhook", { cache: "no-store" });
     const data = await res.json();
     setGlobalUrl(data.globalWebhookUrl || "");
+    setAssignMode(data.assignMode || "restricted");
     setWebhookList(data.webhooks || []);
     setAssignees(data.assignees || []);
     if (!newAssignee && data.assignees?.length) setNewAssignee(data.assignees[0]);
@@ -357,6 +359,36 @@ export function AdminSettings() {
                   </select>
                 </div>
               ))}
+            </div>
+
+            <div className="border-t border-white/10 pt-4 space-y-2">
+              <h3 className="text-sm font-medium text-white">Assignment Permissions</h3>
+              <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                <div>
+                  <p className="text-sm text-white font-medium">Who can members assign tasks to?</p>
+                  <p className="text-xs text-slate-100">
+                    {assignMode === "restricted"
+                      ? "Members can only assign to themselves or admins"
+                      : "Members can assign to anyone on the team"}
+                  </p>
+                </div>
+                <select
+                  className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
+                  value={assignMode}
+                  onChange={async (e) => {
+                    const mode = e.target.value as "restricted" | "unrestricted";
+                    setAssignMode(mode);
+                    await fetch("/api/webhook", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ assignMode: mode }),
+                    });
+                  }}
+                >
+                  <option value="restricted">Self + Admins only</option>
+                  <option value="unrestricted">Anyone</option>
+                </select>
+              </div>
             </div>
 
             <div className="border-t border-white/10 pt-4 space-y-2">

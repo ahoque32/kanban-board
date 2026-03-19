@@ -34,9 +34,13 @@ export const cards = sqliteTable("cards", {
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
+export const assignModes = ["restricted", "unrestricted"] as const;
+export type AssignMode = (typeof assignModes)[number];
+
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey(),
   discordWebhookUrl: text("discord_webhook_url"),
+  assignMode: text("assign_mode").notNull().default("restricted"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 

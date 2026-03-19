@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     globalWebhookUrl: global?.discordWebhookUrl || "",
+    assignMode: global?.assignMode || "restricted",
     assignees: db.select().from(assigneesTable).all().map((a) => a.name),
     webhooks: allWebhooks.map((w) => ({
       id: w.id,
@@ -49,6 +50,14 @@ export async function POST(request: NextRequest) {
         discordWebhookUrl: body.globalWebhookUrl.trim() || null,
         updatedAt: new Date().toISOString(),
       })
+      .where(eq(settings.id, 1));
+  }
+
+  // Update assign mode
+  if (body.assignMode === "restricted" || body.assignMode === "unrestricted") {
+    await db
+      .update(settings)
+      .set({ assignMode: body.assignMode, updatedAt: new Date().toISOString() })
       .where(eq(settings.id, 1));
   }
 
