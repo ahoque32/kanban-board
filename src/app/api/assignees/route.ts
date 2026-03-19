@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireAdmin, requireAuth } from "@/lib/auth";
-import { assignees, settings, users } from "@/lib/schema";
+import { assignees, users } from "@/lib/schema";
 import { ensureDbInitialized } from "@/lib/init";
 
 export async function GET(request: NextRequest) {
@@ -19,16 +19,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ assignees: all });
   }
 
-  // Check the assign mode setting
-  const [config] = db.select().from(settings).where(eq(settings.id, 1)).limit(1).all();
-  const mode = config?.assignMode || "restricted";
+  // Check this user's assign mode
+  const [dbUser] = db.select().from(users).where(eq(users.id, auth.user.id)).limit(1).all();
+  const mode = dbUser?.assignMode || "restricted";
 
   if (mode === "unrestricted") {
     const all = db.select().from(assignees).all();
     return NextResponse.json({ assignees: all });
   }
 
-  // Restricted: non-admins can only assign to themselves or admin users
+  // Restricted: only self + admin users
   const admins = db.select().from(users).where(eq(users.role, "admin")).all();
   const adminNames = admins.map((a) => a.name);
   const allowed = [auth.user.name, ...adminNames.filter((n) => n !== auth.user.name)];

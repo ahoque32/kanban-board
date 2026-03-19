@@ -59,6 +59,7 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   role: text("role", { enum: ["admin", "user"] }).notNull().default("user"),
+  assignMode: text("assign_mode").notNull().default("restricted"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 

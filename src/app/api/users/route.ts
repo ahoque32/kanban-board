@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       email: users.email,
       name: users.name,
       role: users.role,
+      assignMode: users.assignMode,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -37,6 +38,14 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json();
   const userId = Number(body.userId);
+
+  // Handle assign mode update
+  if (body.assignMode === "restricted" || body.assignMode === "unrestricted") {
+    if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+    await db.update(users).set({ assignMode: body.assignMode }).where(eq(users.id, userId));
+    return NextResponse.json({ ok: true });
+  }
+
   const role = body.role === "admin" ? "admin" : body.role === "user" ? "user" : null;
 
   if (!userId || !role) {

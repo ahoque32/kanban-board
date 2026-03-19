@@ -19,6 +19,7 @@ type ManagedUser = {
   email: string;
   name: string;
   role: "admin" | "user";
+  assignMode: "restricted" | "unrestricted";
   createdAt: string;
 };
 
@@ -140,6 +141,15 @@ export function AdminSettings() {
       return;
     }
 
+    await loadUsers();
+  }
+
+  async function updateAssignMode(userId: number, assignMode: "restricted" | "unrestricted") {
+    await fetch("/api/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, assignMode }),
+    });
     await loadUsers();
   }
 
@@ -333,62 +343,47 @@ export function AdminSettings() {
 
             <div className="space-y-2">
               {users.map((user) => (
-                <div key={user.id} className="rounded-lg bg-white/5 px-3 py-2 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-white font-medium">{user.name}</p>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-amber-500/20 text-amber-300"
-                            : "bg-slate-500/20 text-slate-300"
-                        }`}
-                      >
-                        {user.role === "admin" ? "Admin" : "Member"}
-                      </span>
+                <div key={user.id} className="rounded-lg bg-white/5 px-3 py-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-white font-medium">{user.name}</p>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            user.role === "admin"
+                              ? "bg-amber-500/20 text-amber-300"
+                              : "bg-slate-500/20 text-slate-300"
+                          }`}
+                        >
+                          {user.role === "admin" ? "Admin" : "Member"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-100 truncate">{user.email}</p>
                     </div>
-                    <p className="text-xs text-slate-100 truncate">{user.email}</p>
+                    <select
+                      className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
+                      value={user.role}
+                      onChange={(event) => updateRole(user.id, event.target.value as "admin" | "user")}
+                    >
+                      <option value="user">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   </div>
-                  <select
-                    className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
-                    value={user.role}
-                    onChange={(event) => updateRole(user.id, event.target.value as "admin" | "user")}
-                  >
-                    <option value="user">Member</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                  {user.role !== "admin" && (
+                    <div className="flex items-center justify-between pl-1">
+                      <p className="text-xs text-slate-100">Can assign tasks to:</p>
+                      <select
+                        className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs text-slate-200"
+                        value={user.assignMode}
+                        onChange={(e) => updateAssignMode(user.id, e.target.value as "restricted" | "unrestricted")}
+                      >
+                        <option value="restricted">Self + Admins</option>
+                        <option value="unrestricted">Anyone</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               ))}
-            </div>
-
-            <div className="border-t border-white/10 pt-4 space-y-2">
-              <h3 className="text-sm font-medium text-white">Assignment Permissions</h3>
-              <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-                <div>
-                  <p className="text-sm text-white font-medium">Who can members assign tasks to?</p>
-                  <p className="text-xs text-slate-100">
-                    {assignMode === "restricted"
-                      ? "Members can only assign to themselves or admins"
-                      : "Members can assign to anyone on the team"}
-                  </p>
-                </div>
-                <select
-                  className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
-                  value={assignMode}
-                  onChange={async (e) => {
-                    const mode = e.target.value as "restricted" | "unrestricted";
-                    setAssignMode(mode);
-                    await fetch("/api/webhook", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ assignMode: mode }),
-                    });
-                  }}
-                >
-                  <option value="restricted">Self + Admins only</option>
-                  <option value="unrestricted">Anyone</option>
-                </select>
-              </div>
             </div>
 
             <div className="border-t border-white/10 pt-4 space-y-2">
