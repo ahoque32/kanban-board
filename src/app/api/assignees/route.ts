@@ -13,8 +13,22 @@ export async function GET(request: NextRequest) {
     return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const all = db.select().from(assignees).all();
-  return NextResponse.json({ assignees: all });
+  if (auth.user.role === "admin") {
+    // Admins see all assignees
+    const all = db.select().from(assignees).all();
+    return NextResponse.json({ assignees: all });
+  }
+
+  // Non-admins can only assign to themselves or admin users
+  const { users } = await import("@/lib/schema");
+  const admins = db.select().from(users).where(eq(users.role, "admin")).all();
+  const adminNames = admins.map((a) => a.name);
+
+  // Return only the current user + admin users
+  const allowed = [auth.user.name, ...adminNames.filter((n) => n !== auth.user.name)];
+  return NextResponse.json({
+    assignees: allowed.map((name, i) => ({ id: -(i + 1), name })),
+  });
 }
 
 export async function POST(req: NextRequest) {
