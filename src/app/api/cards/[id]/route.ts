@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
@@ -22,8 +22,11 @@ function userCardScope(user: { id: number; role: "admin" | "user"; name: string 
     return eq(cards.id, cardId);
   }
 
-  // Non-admins can only modify cards assigned to them
-  return and(eq(cards.id, cardId), eq(cards.assignee, user.name));
+  // Non-admins can modify cards assigned to them OR created by them
+  return and(
+    eq(cards.id, cardId),
+    or(eq(cards.assignee, user.name), eq(cards.createdBy, user.id))
+  );
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
