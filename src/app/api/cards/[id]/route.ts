@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
@@ -22,7 +22,11 @@ function userCardScope(user: { id: number; role: "admin" | "user"; name: string 
     return eq(cards.id, cardId);
   }
 
-  return and(eq(cards.id, cardId), or(eq(cards.createdBy, user.id), eq(cards.assignee, user.name)));
+  // Allow moving cards that: user created, user is assigned to, or have no creator (Discord/API-created)
+  return and(
+    eq(cards.id, cardId),
+    or(eq(cards.createdBy, user.id), eq(cards.assignee, user.name), isNull(cards.createdBy)),
+  );
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
