@@ -47,6 +47,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
   const [deleting, setDeleting] = useState(false);
   const [assigneeOptions, setAssigneeOptions] = useState<string[]>([]);
   const [fileAttachments, setFileAttachments] = useState<Attachment[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
@@ -77,7 +78,11 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
   useEffect(() => { if (open) loadAttachments(); }, [loadAttachments, open]);
 
   async function uploadFiles(files: FileList | File[]) {
-    if (!card) return;
+    if (!card) {
+      // New card — queue files for upload after save
+      setPendingFiles((prev) => [...prev, ...Array.from(files)]);
+      return;
+    }
     setUploading(true);
     for (const file of Array.from(files)) {
       const formData = new FormData();
@@ -87,6 +92,16 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
     }
     setUploading(false);
     await loadAttachments();
+  }
+
+  async function uploadPendingFiles(cardId: number) {
+    for (const file of pendingFiles) {
+      const formData = new FormData();
+      formData.append("cardId", String(cardId));
+      formData.append("file", file);
+      await fetch("/api/attachments", { method: "POST", body: formData });
+    }
+    setPendingFiles([]);
   }
 
   async function deleteAttachment(id: number) {
@@ -121,6 +136,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
       ...defaultState,
       assignee: !isAdmin && sessionUser?.name ? sessionUser.name : "",
     });
+    setPendingFiles([]);
   }, [card, open, isAdmin, sessionUser?.name]);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -157,6 +173,14 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
       return;
     }
 
+    // Upload pending files for newly created cards
+    if (!card && pendingFiles.length > 0) {
+      const data = await response.json();
+      if (data.card?.id) {
+        await uploadPendingFiles(data.card.id);
+      }
+    }
+
     await onSaved();
     onOpenChange(false);
   }
@@ -167,6 +191,9 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
         <DialogHeader>
           <DialogTitle>{card ? "Edit Task" : "Create Task"}</DialogTitle>
           <DialogDescription>Define title, assignee, due date, priority, and labels.</DialogDescription>
+          {card?.createdByName && (
+            <p className="text-xs text-slate-400 mt-1">Reporter: {card.createdByName}</p>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -229,9 +256,8 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
           </div>
 
           {/* Attachments */}
-          {card && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white/70">Attachments</label>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white/70">Attachments</label>
 
               {/* Drop zone */}
               <div
@@ -291,8 +317,31 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
                   })}
                 </div>
               )}
+
+              {/* Pending files for new cards */}
+              {!card && pendingFiles.length > 0 && (
+                <div className="space-y-1">
+                  {pendingFiles.map((file, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded bg-white/5 p-2">
+                      <span className="text-lg shrink-0">📎</span>
+                      <span className="text-sm text-slate-300 truncate flex-1">{file.name}</span>
+                      <span className="text-xs text-white/30">
+                        {file.size > 1048576
+                          ? `${(file.size / 1048576).toFixed(1)}MB`
+                          : `${(file.size / 1024).toFixed(0)}KB`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-400 hover:text-red-300 text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
 
           <DialogFooter className="flex justify-between">
             <div>
