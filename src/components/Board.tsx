@@ -139,6 +139,16 @@ export function Board() {
     });
   }, [cards, assigneeFilter, priorityFilter, labelFilter]);
 
+  async function deleteColumn(columnId: number) {
+    const res = await fetch(`/api/columns/${columnId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ error: "Failed to delete column" }));
+      alert(data.error || "Failed to delete column");
+      return;
+    }
+    await loadBoard();
+  }
+
   function openCreate(columnId: number) {
     setModalState({ open: true, columnId, card: null });
   }
@@ -330,8 +340,10 @@ export function Board() {
                   cards={filteredCards
                     .filter((card) => card.columnId === column.id)
                     .sort((a, b) => a.position - b.position)}
+                  isAdmin={isAdmin}
                   onAddCard={openCreate}
                   onCardClick={openEdit}
+                  onDeleteColumn={deleteColumn}
                 />
               ))}
           </div>
