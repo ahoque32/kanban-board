@@ -55,6 +55,9 @@ export function Board() {
   const [labelFilter, setLabelFilter] = useState("");
 
   const [newColumn, setNewColumn] = useState("");
+  const [showColumnModal, setShowColumnModal] = useState(false);
+  const [columnVisibleTo, setColumnVisibleTo] = useState<number[]>([]);
+  const [allUsers, setAllUsers] = useState<{ id: number; name: string; role: string }[]>([]);
   const [showChangePw, setShowChangePw] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -138,6 +141,18 @@ export function Board() {
     setModalState({ open: true, columnId: card.columnId, card });
   }
 
+  async function openColumnModal() {
+    if (!newColumn.trim()) return;
+    // Load users for visibility picker
+    const res = await fetch("/api/users");
+    if (res.ok) {
+      const data = await res.json();
+      setAllUsers(data.users || []);
+    }
+    setColumnVisibleTo([]);
+    setShowColumnModal(true);
+  }
+
   async function createColumn() {
     const name = newColumn.trim();
     if (!name) return;
@@ -145,11 +160,13 @@ export function Board() {
     const response = await fetch("/api/columns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ boardId, name }),
+      body: JSON.stringify({ boardId, name, visibleTo: columnVisibleTo }),
     });
 
     if (response.ok) {
       setNewColumn("");
+      setShowColumnModal(false);
+      setColumnVisibleTo([]);
       await loadBoard();
     }
   }
@@ -286,11 +303,11 @@ export function Board() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  createColumn();
+                  openColumnModal();
                 }
               }}
             />
-            <Button variant="primary" onClick={createColumn}>
+            <Button variant="primary" onClick={openColumnModal} disabled={!newColumn.trim()}>
               Add Column
             </Button>
           </div>
@@ -334,6 +351,47 @@ export function Board() {
           onSaved={loadBoard}
         />
       </div>
+
+      {showColumnModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowColumnModal(false)}>
+          <div className="glass w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="content-layer space-y-4">
+              <h2 className="text-lg font-semibold text-white">New Column: {newColumn}</h2>
+              <p className="text-sm text-slate-100">Who can see this column?</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {allUsers.filter((u) => u.role !== "admin").map((user) => (
+                  <label key={user.id} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 cursor-pointer hover:bg-white/10">
+                    <input
+                      type="checkbox"
+                      checked={columnVisibleTo.includes(user.id)}
+                      onChange={(e) => {
+                        setColumnVisibleTo((prev) =>
+                          e.target.checked ? [...prev, user.id] : prev.filter((id) => id !== user.id)
+                        );
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-white">{user.name}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-300">
+                {columnVisibleTo.length === 0
+                  ? "No selection = visible to everyone"
+                  : `Visible to ${columnVisibleTo.length} member(s) + all admins`}
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={() => setShowColumnModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={createColumn}>
+                  Create Column
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showChangePw && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowChangePw(false)}>
