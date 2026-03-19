@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
@@ -19,27 +20,50 @@ const priorityVariant = {
 } as const;
 
 export function Card({ card, onClick }: Props) {
+  const wasDragged = useRef(false);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card", card },
   });
 
+  // Track when a drag actually happened so we can suppress the click
+  if (isDragging) {
+    wasDragged.current = true;
+  }
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: "none" as const,
+  };
+
+  const handleClick = () => {
+    if (wasDragged.current) {
+      wasDragged.current = false;
+      return;
+    }
+    onClick(card);
   };
 
   return (
-    <button
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
+      tabIndex={0}
       {...listeners}
-      onClick={() => onClick(card)}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
       className={cn(
-        "glass-card glass-interactive w-full p-4 text-left",
+        "glass-card glass-interactive w-full cursor-grab p-4 text-left",
         "text-slate-900",
-        isDragging && "opacity-65 shadow-2xl",
+        isDragging && "cursor-grabbing opacity-65 shadow-2xl",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -61,6 +85,6 @@ export function Card({ card, onClick }: Props) {
         <span>{card.assignee || "Unassigned"}</span>
         <span>{card.dueDate ? format(new Date(card.dueDate), "MMM d") : "No due date"}</span>
       </div>
-    </button>
+    </div>
   );
 }
