@@ -1,7 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { DndContext, DragEndEvent, PointerSensor, TouchSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  PointerSensor,
+  TouchSensor,
+  pointerWithin,
+  rectIntersection,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+} from "@dnd-kit/core";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CardModal } from "@/components/CardModal";
@@ -53,6 +65,21 @@ export function Board() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
+
+  // Custom collision detection: prioritize column droppables (pointer-based),
+  // fall back to card intersection for within-column reordering
+  const kanbanCollision: CollisionDetection = (args) => {
+    // First check pointer-within for columns
+    const pointerCollisions = pointerWithin(args);
+    const columnHit = pointerCollisions.find((c) => String(c.id).startsWith("column:"));
+    if (columnHit) return [columnHit];
+
+    // Fall back to rect intersection for cards within current column
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) return rectCollisions;
+
+    return pointerCollisions;
+  };
 
   async function loadBoard() {
     setLoading(true);
@@ -240,7 +267,7 @@ export function Board() {
           </div>
         ) : null}
 
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={kanbanCollision} onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-6">
             {columns
               .sort((a, b) => a.position - b.position)
