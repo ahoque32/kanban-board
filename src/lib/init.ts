@@ -93,6 +93,10 @@ export async function ensureDbInitialized() {
     sqlite.exec("ALTER TABLE cards ADD COLUMN created_by INTEGER;");
   }
 
+  if (!hasColumn("settings", "assign_mode")) {
+    sqlite.exec("ALTER TABLE settings ADD COLUMN assign_mode TEXT NOT NULL DEFAULT 'restricted';");
+  }
+
   const [existingBoard] = await db.select({ value: count() }).from(boards);
   if ((existingBoard?.value ?? 0) === 0) {
     const boardInsert = await db.insert(boards).values({ name: "KanbanFlow" }).returning();
