@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
-import { columns } from "@/lib/schema";
+import { columns, cards, columnVisibility } from "@/lib/schema";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -44,4 +44,35 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({ column: updated[0] });
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  await ensureDbInitialized();
+
+  const auth = requireAdmin(request);
+  if (auth.response || !auth.user) {
+    return auth.response ?? NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const columnId = Number(id);
+  if (Number.isNaN(columnId)) {
+    return NextResponse.json({ error: "Invalid column id" }, { status: 400 });
+  }
+
+  // Check if column has cards
+  const cardCount = db.select({ id: cards.id }).from(cards).where(eq(cards.columnId, columnId)).all();
+  if (cardCount.length > 0) {
+    return NextResponse.json(
+      { error: `Cannot delete column with ${cardCount.length} card(s). Move or delete them first.` },
+      { status: 400 }
+    );
+  }
+
+  // Clean up visibility entries
+  db.delete(columnVisibility).where(eq(columnVisibility.columnId, columnId)).run();
+  // Delete column
+  db.delete(columns).where(eq(columns.id, columnId)).run();
+
+  return NextResponse.json({ ok: true });
 }

@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
 import type { KanbanCard, KanbanColumn } from "@/lib/types";
@@ -10,11 +10,13 @@ import type { KanbanCard, KanbanColumn } from "@/lib/types";
 type Props = {
   column: KanbanColumn;
   cards: KanbanCard[];
+  isAdmin?: boolean;
   onAddCard: (columnId: number) => void;
   onCardClick: (card: KanbanCard) => void;
+  onDeleteColumn?: (columnId: number) => void;
 };
 
-export function Column({ column, cards, onAddCard, onCardClick }: Props) {
+export function Column({ column, cards, isAdmin, onAddCard, onCardClick, onDeleteColumn }: Props) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column:${column.id}`,
     data: { type: "column", columnId: column.id },
@@ -30,9 +32,25 @@ export function Column({ column, cards, onAddCard, onCardClick }: Props) {
           <h2 className="text-sm font-semibold text-white">{column.name}</h2>
           <p className="text-xs text-slate-100">{cards.length} task(s)</p>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => onAddCard(column.id)}>
-          <Plus className="mr-1 h-4 w-4" /> Add
-        </Button>
+        <div className="flex items-center gap-1">
+          {isAdmin && onDeleteColumn && cards.length === 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (confirm(`Delete column "${column.name}"?`)) {
+                  onDeleteColumn(column.id);
+                }
+              }}
+              className="text-red-400 hover:text-red-300"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => onAddCard(column.id)}>
+            <Plus className="mr-1 h-4 w-4" /> Add
+          </Button>
+        </div>
       </div>
 
       <div
