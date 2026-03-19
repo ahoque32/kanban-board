@@ -157,8 +157,16 @@ export function AdminSettings() {
       return;
     }
 
+    const data = await res.json();
     setInviteEmail("");
-    alert("Invite sent");
+
+    if (data.emailSent) {
+      alert("Invite email sent!");
+    } else if (data.registerUrl) {
+      // Email not configured — show the invite link to copy
+      const copied = await navigator.clipboard.writeText(data.registerUrl).then(() => true).catch(() => false);
+      alert(`Email not configured. Share this registration link:\n\n${data.registerUrl}${copied ? "\n\n(Copied to clipboard)" : ""}`);
+    }
   }
 
   useEffect(() => {

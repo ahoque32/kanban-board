@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 function buildTransport() {
-  const from = "ahawkhoque@gmail.com";
+  const from = process.env.INVITE_FROM_EMAIL || "admin@renderwise.net";
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!pass) {
     throw new Error("GMAIL_APP_PASSWORD is not configured");
