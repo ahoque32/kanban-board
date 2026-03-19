@@ -35,6 +35,9 @@ export function AdminSettings() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
 
+  type ColumnWithVisibility = { id: number; name: string; visibleTo: number[] };
+  const [boardColumns, setBoardColumns] = useState<ColumnWithVisibility[]>([]);
+
   const [newAssignee, setNewAssignee] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -49,6 +52,23 @@ export function AdminSettings() {
     if (!newAssignee && data.assignees?.length) setNewAssignee(data.assignees[0]);
   }
 
+
+  async function loadColumns() {
+    const res = await fetch("/api/columns", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      setBoardColumns(data.columns || []);
+    }
+  }
+
+  async function updateColumnVisibility(columnId: number, visibleTo: number[]) {
+    await fetch(`/api/columns/${columnId}/visibility`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibleTo }),
+    });
+    await loadColumns();
+  }
 
   async function loadUsers() {
     const res = await fetch("/api/users", { cache: "no-store" });
@@ -181,6 +201,7 @@ export function AdminSettings() {
   useEffect(() => {
     loadWebhooks();
     loadUsers();
+    loadColumns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -366,6 +387,58 @@ export function AdminSettings() {
                   {inviting ? "Sending..." : "Invite User"}
                 </Button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass p-5 space-y-4">
+          <div className="content-layer space-y-4">
+            <h2 className="text-lg font-semibold text-white">Column Visibility</h2>
+            <p className="text-xs text-slate-300">Control which members can see each column. Admins always see all columns.</p>
+
+            <div className="space-y-3">
+              {boardColumns.map((col) => {
+                const nonAdminUsers = users.filter((u) => u.role !== "admin");
+                return (
+                  <div key={col.id} className="rounded-lg bg-white/5 px-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-white">{col.name}</p>
+                      <span className="text-xs text-slate-300">
+                        {col.visibleTo.length === 0 ? "Everyone" : `${col.visibleTo.length} member(s)`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {nonAdminUsers.map((user) => {
+                        const checked = col.visibleTo.includes(user.id);
+                        return (
+                          <label key={user.id} className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-1 cursor-pointer hover:bg-white/10 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...col.visibleTo, user.id]
+                                  : col.visibleTo.filter((id) => id !== user.id);
+                                updateColumnVisibility(col.id, next);
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-slate-200">{user.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {col.visibleTo.length > 0 && (
+                      <button
+                        onClick={() => updateColumnVisibility(col.id, [])}
+                        className="text-xs text-cyan-400 hover:text-cyan-300"
+                      >
+                        Reset to everyone
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
