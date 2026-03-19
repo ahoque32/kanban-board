@@ -187,7 +187,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
             <Select
               value={state.assignee || "__none__"}
               onValueChange={(value) => setState((prev) => ({ ...prev, assignee: value === "__none__" ? "" : value }))}
-              disabled={false}
+
             >
               <SelectTrigger>
                 <SelectValue placeholder="Assignee" />
