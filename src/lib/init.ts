@@ -5,7 +5,7 @@ import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, users }
 
 let initialized = false;
 
-const ADMIN_EMAIL = "ahawkhoque@gmail.com";
+const ADMIN_EMAIL = "admin@vendorwise.net";
 const ADMIN_PASSWORD = "admin123";
 const ADMIN_NAME = "Ahawk";
 
