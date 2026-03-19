@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { sendDiscordTaskNotification } from "@/lib/discord";
 import { ensureDbInitialized } from "@/lib/init";
-import { cards, columns, priorities } from "@/lib/schema";
+import { cards, columns, priorities, users } from "@/lib/schema";
 
 function normalizeLabels(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -107,10 +107,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
   }
 
+  // Resolve creator name
+  let createdByName: string | null = null;
+  if (nextCard.createdBy) {
+    const [creator] = db.select({ name: users.name }).from(users).where(eq(users.id, nextCard.createdBy)).limit(1).all();
+    createdByName = creator?.name || "Unknown";
+  }
+
   return NextResponse.json({
     card: {
       ...nextCard,
       labels: JSON.parse(nextCard.labels || "[]"),
+      createdByName,
     },
   });
 }
