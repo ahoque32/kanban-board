@@ -54,9 +54,15 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
     const res = await fetch("/api/assignees");
     if (res.ok) {
       const data = await res.json();
-      setAssigneeOptions(data.assignees.map((a: { name: string }) => a.name));
+      const names: string[] = data.assignees.map((a: { name: string }) => a.name);
+      setAssigneeOptions(names);
+      // If current assignee isn't in options (e.g. card assigned to someone outside restricted list),
+      // add it so the dropdown still shows the current value
+      if (card?.assignee && !names.includes(card.assignee)) {
+        setAssigneeOptions((prev) => [...prev, card.assignee]);
+      }
     }
-  }, []);
+  }, [card?.assignee]);
 
   const loadAttachments = useCallback(async () => {
     if (!card) { setFileAttachments([]); return; }
@@ -181,7 +187,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
             <Select
               value={state.assignee || "__none__"}
               onValueChange={(value) => setState((prev) => ({ ...prev, assignee: value === "__none__" ? "" : value }))}
-              disabled={!isAdmin && !card}
+              disabled={false}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Assignee" />
