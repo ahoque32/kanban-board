@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ensureDbInitialized } from "@/lib/init";
-import { settings, webhooks, assignees as assigneesTable } from "@/lib/schema";
+import { settings, webhooks, users } from "@/lib/schema";
 import { requireSession } from "@/lib/session";
 
 // GET — return all webhooks + global setting
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     globalWebhookUrl: global?.discordWebhookUrl || "",
     assignMode: global?.assignMode || "restricted",
-    assignees: db.select().from(assigneesTable).all().map((a) => a.name),
+    assignees: db.select({ name: users.name }).from(users).all().map((a) => a.name),
     webhooks: allWebhooks.map((w) => ({
       id: w.id,
       assignee: w.assignee,
