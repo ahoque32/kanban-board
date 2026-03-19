@@ -12,6 +12,7 @@ export type KanbanCard = {
   labels: string[];
   position: number;
   createdBy: number | null;
+  createdByName: string | null;
   createdAt: string;
   updatedAt: string;
 };

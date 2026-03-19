@@ -85,6 +85,12 @@ export function Card({ card, onClick }: Props) {
         <span>{card.assignee || "Unassigned"}</span>
         <span>{card.dueDate ? format(new Date(card.dueDate), "MMM d") : "No due date"}</span>
       </div>
+
+      {card.createdByName && (
+        <div className="mt-1.5 text-[10px] text-slate-500">
+          Reporter: {card.createdByName}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { sendDiscordTaskNotification } from "@/lib/discord";
 import { ensureDbInitialized } from "@/lib/init";
 import { cardVisibilityCondition } from "@/lib/permissions";
-import { cards, columns, priorities } from "@/lib/schema";
+import { cards, columns, priorities, users } from "@/lib/schema";
 
 function safeLabels(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -26,10 +26,19 @@ export async function GET(request: NextRequest) {
   const query = db.select().from(cards).orderBy(asc(cards.position), asc(cards.id));
   const list = visibility ? await query.where(visibility) : await query;
 
+  // Resolve createdBy IDs to names
+  const userIds = [...new Set(list.map((c) => c.createdBy).filter((id): id is number => id != null))];
+  const userMap: Record<number, string> = {};
+  if (userIds.length > 0) {
+    const allUsers = db.select({ id: users.id, name: users.name }).from(users).all();
+    for (const u of allUsers) userMap[u.id] = u.name;
+  }
+
   return NextResponse.json({
     cards: list.map((card) => ({
       ...card,
       labels: JSON.parse(card.labels || "[]"),
+      createdByName: card.createdBy ? (userMap[card.createdBy] || "Unknown") : null,
     })),
   });
 }
