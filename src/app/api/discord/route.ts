@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyKey } from "discord-interactions";
 import { getDb } from "@/lib/db";
+import { ensureDbInitialized } from "@/lib/init";
 import { cards, columns, boards } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     return reply("Unknown interaction type", true);
   }
 
+  await ensureDbInitialized();
   const { name, options } = interaction.data;
   const db = getDb();
 
