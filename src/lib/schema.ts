@@ -77,6 +77,12 @@ export const attachments = sqliteTable("attachments", {
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
+export const columnVisibility = sqliteTable("column_visibility", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  columnId: integer("column_id").notNull(),
+  userId: integer("user_id").notNull(),
+});
+
 export const inviteTokens = sqliteTable("invite_tokens", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   token: text("token").notNull().unique(),

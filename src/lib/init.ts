@@ -70,6 +70,13 @@ export async function ensureDbInitialized() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS column_visibility (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      column_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      UNIQUE(column_id, user_id)
+    );
+
     CREATE TABLE IF NOT EXISTS invite_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       token TEXT NOT NULL UNIQUE,
