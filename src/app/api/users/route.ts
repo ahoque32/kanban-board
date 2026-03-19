@@ -1,7 +1,7 @@
 import { count, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, hashPassword } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
 import { users } from "@/lib/schema";
 
@@ -38,6 +38,17 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json();
   const userId = Number(body.userId);
+
+  // Handle password reset
+  if (typeof body.newPassword === "string") {
+    if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+    if (body.newPassword.length < 6) {
+      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    }
+    const hashed = await hashPassword(body.newPassword);
+    await db.update(users).set({ passwordHash: hashed }).where(eq(users.id, userId));
+    return NextResponse.json({ ok: true });
+  }
 
   // Handle assign mode update
   if (body.assignMode === "restricted" || body.assignMode === "unrestricted") {

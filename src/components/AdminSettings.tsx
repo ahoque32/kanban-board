@@ -128,6 +128,26 @@ export function AdminSettings() {
     await loadUsers();
   }
 
+  async function resetPassword(userId: number, userName: string) {
+    const newPassword = prompt(`Enter new password for ${userName} (min 6 characters):`);
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
+    const res = await fetch("/api/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, newPassword }),
+    });
+    if (res.ok) {
+      alert(`Password reset for ${userName}`);
+    } else {
+      const data = await res.json().catch(() => ({ error: "Failed to reset password" }));
+      alert(data.error || "Failed to reset password");
+    }
+  }
+
   async function sendInvite() {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -300,6 +320,12 @@ export function AdminSettings() {
                       </div>
                       <p className="text-xs text-slate-100 truncate">{user.email}</p>
                     </div>
+                    <button
+                      onClick={() => resetPassword(user.id, user.name)}
+                      className="rounded-md bg-white/5 border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition"
+                    >
+                      Reset PW
+                    </button>
                     <select
                       className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
                       value={user.role}
