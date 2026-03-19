@@ -55,6 +55,11 @@ export function Board() {
   const [labelFilter, setLabelFilter] = useState("");
 
   const [newColumn, setNewColumn] = useState("");
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
   const [modalState, setModalState] = useState<ModalState>({
     open: false,
     columnId: 0,
@@ -199,6 +204,26 @@ export function Board() {
     await loadBoard();
   }
 
+  async function handleChangePassword() {
+    setPwError("");
+    setPwSaving(true);
+    const res = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+    });
+    setPwSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ error: "Failed" }));
+      setPwError(data.error || "Failed to change password");
+      return;
+    }
+    setShowChangePw(false);
+    setCurrentPw("");
+    setNewPw("");
+    alert("Password changed successfully");
+  }
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
@@ -224,9 +249,13 @@ export function Board() {
                 <SettingsIcon className="h-5 w-5" />
               </Link>
             ) : null}
-            <div className="rounded-full bg-white/10 px-3 py-2 text-sm text-white">
+            <button
+              onClick={() => setShowChangePw(true)}
+              className="rounded-full bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 transition cursor-pointer"
+              title="Change password"
+            >
               {sessionUser.name}
-            </div>
+            </button>
             <Button variant="ghost" onClick={handleLogout}>
               Logout
             </Button>
@@ -304,6 +333,39 @@ export function Board() {
           onSaved={loadBoard}
         />
       </div>
+
+      {showChangePw && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowChangePw(false)}>
+          <div className="glass w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="content-layer space-y-4">
+              <h2 className="text-lg font-semibold text-white">Change Password</h2>
+              <input
+                type="password"
+                placeholder="Current password"
+                value={currentPw}
+                onChange={(e) => setCurrentPw(e.target.value)}
+                className="w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm text-white placeholder:text-white/40"
+              />
+              <input
+                type="password"
+                placeholder="New password (min 6 characters)"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                className="w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm text-white placeholder:text-white/40"
+              />
+              {pwError && <p className="text-sm text-red-300">{pwError}</p>}
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={() => { setShowChangePw(false); setCurrentPw(""); setNewPw(""); setPwError(""); }}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleChangePassword} disabled={pwSaving || !currentPw || newPw.length < 6}>
+                  {pwSaving ? "Saving..." : "Change Password"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

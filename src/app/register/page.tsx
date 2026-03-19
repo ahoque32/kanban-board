@@ -1,18 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const inviteEmail = searchParams.get("email") || "";
+
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  if (!token) {
+    return (
+      <main className="relative flex min-h-screen items-center justify-center px-4 py-8">
+        <div className="glass w-full max-w-md p-8">
+          <div className="content-layer space-y-4 text-center">
+            <h1 className="text-2xl font-semibold text-white">Registration</h1>
+            <p className="text-sm text-slate-100">
+              You need an invite link to create an account. Contact your admin.
+            </p>
+            <Link href="/login" className="text-cyan-300 hover:underline text-sm">
+              Already have an account? Login
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -22,7 +44,7 @@ export default function RegisterPage() {
     const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ token, name, email, password }),
     });
 
     setLoading(false);
@@ -59,6 +81,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
+              readOnly={!!inviteEmail}
             />
             <Input
               type="password"
@@ -83,5 +106,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
