@@ -341,6 +341,26 @@ export function AdminSettings() {
                       </div>
                       <p className="text-xs text-slate-100 truncate">{user.email}</p>
                     </div>
+                    {user.role !== "admin" && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Switch to ${user.name}'s view? You'll be logged in as them.`)) return;
+                          const res = await fetch("/api/auth/impersonate", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ userId: user.id }),
+                          });
+                          if (res.ok) {
+                            window.location.href = "/";
+                          } else {
+                            alert("Failed to impersonate user");
+                          }
+                        }}
+                        className="rounded-md bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 text-xs text-cyan-300 hover:bg-cyan-500/20 transition"
+                      >
+                        View as
+                      </button>
+                    )}
                     <button
                       onClick={() => resetPassword(user.id, user.name)}
                       className="rounded-md bg-white/5 border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition"
