@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
 import { db } from "@/lib/db";
@@ -18,7 +18,7 @@ function userCardScope(user: { id: number; role: "admin" | "user"; name: string 
     return eq(cards.id, cardId);
   }
 
-  return and(eq(cards.id, cardId), or(eq(cards.createdBy, user.id), eq(cards.assignee, user.name), isNull(cards.createdBy)));
+  return and(eq(cards.id, cardId), eq(cards.assignee, user.name));
 }
 
 async function hasCardAccess(user: { id: number; role: "admin" | "user"; name: string }, cardId: number) {
