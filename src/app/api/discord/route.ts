@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyKey } from "discord-interactions";
 import { getDb } from "@/lib/db";
 import { ensureDbInitialized } from "@/lib/init";
-import { cards, columns, boards } from "@/lib/schema";
+import { cards, columns, boards, users } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
 
 const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || "";
@@ -85,6 +85,18 @@ export async function POST(req: NextRequest) {
           const maxPos = existing.reduce((max, c) => Math.max(max, c.position), -1);
 
           const now = new Date().toISOString();
+
+          // Resolve assignee against registered users
+          let resolvedAssignee = assignee;
+          if (assignee) {
+            const allUsers = db.select().from(users).all();
+            const match = allUsers.find((u) => u.name.toLowerCase() === assignee.toLowerCase());
+            if (match) resolvedAssignee = match.name;
+          }
+
+          // Set createdBy to admin user (Discord commands are admin-level)
+          const [admin] = db.select().from(users).where(eq(users.role, "admin")).limit(1).all();
+
           const result = db
             .insert(cards)
             .values({
@@ -92,10 +104,11 @@ export async function POST(req: NextRequest) {
               columnId: firstCol.id,
               title,
               description,
-              assignee,
+              assignee: resolvedAssignee,
               priority,
               labels: "[]",
               position: maxPos + 1,
+              createdBy: admin?.id || null,
               createdAt: now,
               updatedAt: now,
             })
@@ -106,7 +119,8 @@ export async function POST(req: NextRequest) {
             `✅ **Task #${result.id} created**\n` +
               `**${title}**\n` +
               `📋 Column: ${firstCol.name}\n` +
-              (assignee ? `👤 Assignee: ${assignee}\n` : "") +
+              (resolvedAssignee ? `👤 Assignee: ${resolvedAssignee}\n` : "") +
+              `📝 Created by: ${admin?.id ? "Admin (Discord)" : "Discord"}\n` +
               `🔴 Priority: ${priority}`
           );
         }
@@ -138,10 +152,17 @@ export async function POST(req: NextRequest) {
 
           if (allCards.length === 0) return reply("No tasks found.", true);
 
+          // Resolve creators
+          const allUsersForList = db.select().from(users).all();
+          const userMapForList: Record<number, string> = {};
+          for (const u of allUsersForList) userMapForList[u.id] = u.name;
+
           const priorityEmoji: Record<string, string> = { high: "🔴", med: "🟡", low: "🟢" };
           const lines = allCards.slice(0, 15).map(
-            (c) =>
-              `${priorityEmoji[c.priority] || "⚪"} **#${c.id}** ${c.title} — ${colMap[c.columnId] || "?"} ${c.assignee ? `(${c.assignee})` : ""}`
+            (c) => {
+              const creator = c.createdBy ? (userMapForList[c.createdBy] || "?") : "?";
+              return `${priorityEmoji[c.priority] || "⚪"} **#${c.id}** ${c.title} — ${colMap[c.columnId] || "?"} ${c.assignee ? `👤${c.assignee}` : ""} 📝${creator}`;
+            }
           );
 
           return reply(
