@@ -158,7 +158,27 @@ export function isAdmin(user: AuthUser | null): user is AuthUser {
   return Boolean(user && user.role === "admin");
 }
 
+/** Synthetic admin user for API key auth (bots/agents) */
+const API_KEY_ADMIN: AuthUser = {
+  id: 1,
+  email: "admin@renderwise.net",
+  name: "Admin",
+  role: "admin",
+};
+
+function getApiKeyUser(request: NextRequest): AuthUser | null {
+  const apiKey = process.env.BOARD_API_KEY;
+  if (!apiKey) return null;
+  const authHeader = request.headers.get("authorization");
+  if (authHeader === `Bearer ${apiKey}`) return API_KEY_ADMIN;
+  return null;
+}
+
 export function requireAuth(request: NextRequest) {
+  // Check API key first (bot/agent access)
+  const apiKeyUser = getApiKeyUser(request);
+  if (apiKeyUser) return { response: null, user: apiKeyUser };
+
   const user = getAuthUserFromCookieHeader(request.headers.get("cookie"));
   if (!user) {
     return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };

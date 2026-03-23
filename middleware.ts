@@ -8,9 +8,11 @@ const PUBLIC_PATHS = new Set([
   "/api/webhook",
   "/api/auth/login",
   "/api/auth/register",
+  "/api/board-summary",
 ]);
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-only-insecure-secret-change-me";
+const BOARD_API_KEY = process.env.BOARD_API_KEY || "";
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -28,6 +30,14 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isPublicPath(pathname)) {
     return NextResponse.next();
+  }
+
+  // API key auth for bots/agents — grants admin access to API routes
+  if (pathname.startsWith("/api/") && BOARD_API_KEY) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader === `Bearer ${BOARD_API_KEY}`) {
+      return NextResponse.next();
+    }
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
