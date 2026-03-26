@@ -109,3 +109,8 @@ export const uploadQueue = sqliteTable("upload_queue", {
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
+
+export const uploadQueueVisibility = sqliteTable("upload_queue_visibility", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+});

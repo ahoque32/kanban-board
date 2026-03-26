@@ -46,6 +46,7 @@ export type BoardResponse = {
   board: KanbanBoard;
   columns: KanbanColumn[];
   cards: KanbanCard[];
+  canSeeUploadQueue: boolean;
 };
 
 export type UploadQueueStatus = "pending" | "ready" | "uploaded";

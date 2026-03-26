@@ -1,7 +1,16 @@
 import bcrypt from "bcryptjs";
 import { count, eq, isNull } from "drizzle-orm";
 import { db, sqlite } from "@/lib/db";
-import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, uploadQueue, users } from "@/lib/schema";
+import {
+  boards,
+  cards,
+  columns,
+  settings,
+  assignees,
+  DEFAULT_ASSIGNEES,
+  uploadQueue,
+  users,
+} from "@/lib/schema";
 
 let initialized = false;
 
@@ -115,6 +124,11 @@ export async function ensureDbInitialized() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS upload_queue_visibility (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL
+    );
   `);
 
   if (!hasColumn("cards", "created_by")) {
@@ -148,6 +162,7 @@ export async function ensureDbInitialized() {
   if (!hasColumn("upload_queue", "updated_at")) {
     sqlite.exec("ALTER TABLE upload_queue ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP;");
   }
+
 
   // Backfill null createdBy to admin user
   const nullCreatedByCards = db.select({ id: cards.id }).from(cards).where(isNull(cards.createdBy)).all();

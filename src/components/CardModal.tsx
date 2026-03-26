@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type DragEvent, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -109,7 +109,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
     await loadAttachments();
   }
 
-  function handleDrop(e: React.DragEvent) {
+  function handleDrop(e: DragEvent) {
     e.preventDefault();
     setDragOver(false);
     if (e.dataTransfer.files.length > 0) {
@@ -139,7 +139,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
     setPendingFiles([]);
   }, [card, open, isAdmin, sessionUser?.name]);
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
 
@@ -190,13 +190,13 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{card ? "Edit Task" : "Create Task"}</DialogTitle>
-          <DialogDescription>Define title, assignee, due date, priority, and labels.</DialogDescription>
+          <DialogDescription>Define title, assignee, due date, priority, labels, and supporting files.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {card && (
-            <div className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 font-medium">
-              📝 Created by: {card.createdByName || "Unknown"}
+            <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 text-sm font-medium text-[var(--text-secondary)]">
+              Created by {card.createdByName || "Unknown"}
             </div>
           )}
 
@@ -213,7 +213,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
             onChange={(event) => setState((prev) => ({ ...prev, description: event.target.value }))}
           />
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 border-t border-[var(--border-default)] pt-4 md:grid-cols-2">
             <Select
               value={state.assignee || "__none__"}
               onValueChange={(value) => setState((prev) => ({ ...prev, assignee: value === "__none__" ? "" : value }))}
@@ -259,20 +259,22 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
           </div>
 
           {/* Attachments */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white/70">Attachments</label>
+          <div className="space-y-2 border-t border-[var(--border-default)] pt-4">
+            <label className="text-sm font-medium text-[var(--text-primary)]">Attachments</label>
 
               {/* Drop zone */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
-                  dragOver ? "border-cyan-400 bg-cyan-400/10" : "border-white/20 hover:border-white/40"
+                className={`cursor-pointer rounded-[var(--radius-md)] border-2 border-dashed p-4 text-center transition-all duration-200 ${
+                  dragOver
+                    ? "border-[var(--accent-primary)] bg-[color:color-mix(in_srgb,var(--accent-primary)_10%,var(--bg-card))]"
+                    : "border-[var(--border-hover)] bg-[var(--bg-secondary)] hover:border-[var(--accent-primary)]"
                 }`}
                 onClick={() => document.getElementById("file-input")?.click()}
               >
-                <p className="text-sm text-white/50">
+                <p className="text-sm text-[var(--text-secondary)]">
                   {uploading ? "Uploading..." : "Drop files here or click to upload"}
                 </p>
                 <input
@@ -291,27 +293,28 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
                     const isImage = att.mimeType.startsWith("image/");
                     const url = `/api/attachments/file?name=${encodeURIComponent(att.storagePath)}`;
                     return (
-                      <div key={att.id} className="flex items-center gap-2 rounded bg-white/5 p-2">
+                      <div key={att.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2">
                         {isImage ? (
                           <a href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={url} alt={att.filename} className="h-10 w-10 rounded object-cover" />
                           </a>
                         ) : (
-                          <span className="text-lg shrink-0">📎</span>
+                          <span className="shrink-0 text-lg">📎</span>
                         )}
                         <a href={url} target="_blank" rel="noopener noreferrer"
-                          className="text-sm text-cyan-300 hover:underline truncate flex-1">
+                          className="flex-1 truncate text-sm text-[var(--accent-primary)] hover:underline">
                           {att.filename}
                         </a>
-                        <span className="text-xs text-white/30">
+                        <span className="text-xs text-[var(--text-muted)]">
                           {att.size > 1048576
                             ? `${(att.size / 1048576).toFixed(1)}MB`
                             : `${(att.size / 1024).toFixed(0)}KB`}
                         </span>
                         <button
+                          type="button"
                           onClick={() => deleteAttachment(att.id)}
-                          className="text-red-400 hover:text-red-300 text-xs"
+                          className="text-xs text-[var(--accent-danger)] hover:opacity-80"
                         >
                           ✕
                         </button>
@@ -325,10 +328,10 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
               {!card && pendingFiles.length > 0 && (
                 <div className="space-y-1">
                   {pendingFiles.map((file, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded bg-white/5 p-2">
-                      <span className="text-lg shrink-0">📎</span>
-                      <span className="text-sm text-slate-300 truncate flex-1">{file.name}</span>
-                      <span className="text-xs text-white/30">
+                    <div key={i} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--accent-primary)_8%,var(--bg-card))] p-2">
+                      <span className="shrink-0 text-lg">📎</span>
+                      <span className="flex-1 truncate text-sm text-[var(--text-secondary)]">{file.name}</span>
+                      <span className="text-xs text-[var(--text-muted)]">
                         {file.size > 1048576
                           ? `${(file.size / 1048576).toFixed(1)}MB`
                           : `${(file.size / 1024).toFixed(0)}KB`}
@@ -336,7 +339,7 @@ export function CardModal({ open, onOpenChange, boardId, columnId, card, session
                       <button
                         type="button"
                         onClick={() => setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-red-400 hover:text-red-300 text-xs"
+                        className="text-xs text-[var(--accent-danger)] hover:opacity-80"
                       >
                         ✕
                       </button>
