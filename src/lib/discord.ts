@@ -62,8 +62,10 @@ async function sendToWebhook(url: string, body: object) {
 }
 
 export async function getGlobalDiscordWebhookUrl(): Promise<string> {
+  // Prefer env var (always set on Cloud Run), fall back to DB settings
+  if (process.env.DISCORD_WEBHOOK_URL) return process.env.DISCORD_WEBHOOK_URL;
   const [global] = await db.select().from(settings).where(eq(settings.id, 1)).limit(1);
-  return global?.discordWebhookUrl || process.env.DISCORD_WEBHOOK_URL || "";
+  return global?.discordWebhookUrl || "";
 }
 
 export async function sendDiscordTaskNotification(event: DiscordEvent, payload: NotifyPayload) {
