@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireAdmin, requireAuth } from "@/lib/auth";
 import { ensureDbInitialized } from "@/lib/init";
 import { cardVisibilityCondition } from "@/lib/permissions";
-import { boards, cards, columns, users } from "@/lib/schema";
+import { boards, cards, columns, uploadQueueVisibility, users } from "@/lib/schema";
 
 function parseLabels(value: string) {
   try {
@@ -35,6 +35,14 @@ export async function GET(request: NextRequest) {
     db.select().from(columns).orderBy(asc(columns.position)),
     visibility ? cardQuery.where(visibility) : cardQuery,
   ]);
+
+  const uploadQueueVisibleTo = await db
+    .select({ userId: uploadQueueVisibility.userId })
+    .from(uploadQueueVisibility);
+  const canSeeUploadQueue =
+    auth.user.role === "admin" ||
+    uploadQueueVisibleTo.length === 0 ||
+    uploadQueueVisibleTo.some((row) => row.userId === auth.user.id);
 
   // Resolve createdBy IDs to names
   const allUsers = db.select({ id: users.id, name: users.name }).from(users).all();
@@ -71,6 +79,7 @@ export async function GET(request: NextRequest) {
       createdAt: card.createdAt,
       updatedAt: card.updatedAt,
     })),
+    canSeeUploadQueue,
   });
 }
 
