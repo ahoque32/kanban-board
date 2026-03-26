@@ -4,7 +4,6 @@ import { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
-import { CalendarDays, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { KanbanCard } from "@/lib/types";
@@ -62,16 +61,17 @@ export function Card({ card, onClick }: Props) {
         }
       }}
       className={cn(
-        "glass-card glass-card-hover w-full cursor-grab p-4 text-left transition-all duration-200 hover:-translate-y-0.5",
-        isDragging && "cursor-grabbing opacity-65 shadow-[var(--shadow-lg)]",
+        "glass-card glass-interactive w-full cursor-grab p-4 text-left",
+        "text-slate-900",
+        isDragging && "cursor-grabbing opacity-65 shadow-2xl",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="line-clamp-2 text-base font-semibold leading-6 text-[var(--text-primary)]">{card.title}</h3>
+        <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{card.title}</h3>
         <Badge variant={priorityVariant[card.priority]}>{card.priority.toUpperCase()}</Badge>
       </div>
 
-      {card.description ? <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--text-secondary)]">{card.description}</p> : null}
+      {card.description ? <p className="mt-2 line-clamp-3 text-xs text-slate-700">{card.description}</p> : null}
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {card.labels.map((label) => (
@@ -81,21 +81,13 @@ export function Card({ card, onClick }: Props) {
         ))}
       </div>
 
-      <div className="mt-4 grid gap-2 text-xs text-[var(--text-secondary)]">
-        <div className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] bg-[var(--bg-secondary)] px-3 py-2">
-          <span className="inline-flex items-center gap-2 truncate">
-            <UserRound className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-            <span className="truncate">{card.assignee || "Unassigned"}</span>
-          </span>
-          <span className="inline-flex items-center gap-2 whitespace-nowrap">
-            <CalendarDays className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-            {card.dueDate ? format(new Date(card.dueDate), "MMM d") : "No due date"}
-          </span>
-        </div>
+      <div className="mt-3 flex items-center justify-between text-xs text-slate-700">
+        <span>{card.assignee || "Unassigned"}</span>
+        <span>{card.dueDate ? format(new Date(card.dueDate), "MMM d") : "No due date"}</span>
       </div>
 
-      <div className="mt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--text-muted)]">
-        Created by {card.createdByName || "Unknown"}
+      <div className="mt-1.5 text-[10px] text-slate-500">
+        📝 {card.createdByName || "Unknown"}
       </div>
     </div>
   );

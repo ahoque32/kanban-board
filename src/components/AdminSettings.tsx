@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Shield, Users2, Webhook } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type WebhookItem = {
+type Webhook = {
   id: number;
   assignee: string;
   webhookUrl: string;
@@ -23,87 +23,25 @@ type ManagedUser = {
   createdAt: string;
 };
 
-type ColumnWithVisibility = {
-  id: number;
-  name: string;
-  visibleTo: number[];
-};
-
-function Toggle({
-  checked,
-  onChange,
-  label,
-  description,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-  description?: string;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3 transition-all duration-200 hover:border-[var(--border-hover)] hover:bg-[var(--bg-card-hover)]">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-[var(--text-primary)]">{label}</p>
-        {description ? <p className="text-xs text-[var(--text-secondary)]">{description}</p> : null}
-      </div>
-      <span className="relative inline-flex h-6 w-11 flex-shrink-0 items-center">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(event) => onChange(event.target.checked)}
-          className="peer sr-only"
-        />
-        <span className="absolute inset-0 rounded-full border border-[var(--border-default)] bg-[var(--bg-card)] transition-all duration-200 peer-checked:border-[color:color-mix(in_srgb,var(--accent-primary)_35%,transparent)] peer-checked:bg-[color:color-mix(in_srgb,var(--accent-primary)_24%,var(--bg-card))]" />
-        <span className="absolute left-0.5 h-5 w-5 rounded-full bg-[var(--bg-card-hover)] shadow-[var(--shadow-sm)] transition-all duration-200 peer-checked:left-[1.3rem]" />
-      </span>
-    </label>
-  );
-}
-
-function Section({
-  title,
-  description,
-  icon,
-  children,
-}: {
-  title: string;
-  description: string;
-  icon: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="glass-card p-5 md:p-6">
-      <div className="mb-5 flex items-start gap-3 border-b border-[var(--border-default)] pb-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--accent-primary)]">
-          {icon}
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
-          <p className="text-sm text-[var(--text-secondary)]">{description}</p>
-        </div>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </section>
-  );
-}
-
 export function AdminSettings() {
   const [globalUrl, setGlobalUrl] = useState("");
-  const [webhookList, setWebhookList] = useState<WebhookItem[]>([]);
+  const [webhookList, setWebhookList] = useState<Webhook[]>([]);
   const [assignees, setAssignees] = useState<string[]>([]);
-  const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [boardColumns, setBoardColumns] = useState<ColumnWithVisibility[]>([]);
-  const [uploadQueueVisibleTo, setUploadQueueVisibleTo] = useState<number[]>([]);
-  const [assignMode, setAssignMode] = useState<"restricted" | "unrestricted">("restricted");
 
   const [saving, setSaving] = useState(false);
-  const [inviting, setInviting] = useState(false);
+
+  const [assignMode, setAssignMode] = useState<"restricted" | "unrestricted">("restricted");
+  const [users, setUsers] = useState<ManagedUser[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+
+  type ColumnWithVisibility = { id: number; name: string; visibleTo: number[] };
+  const [boardColumns, setBoardColumns] = useState<ColumnWithVisibility[]>([]);
+  const [uploadQueueVisibleTo, setUploadQueueVisibleTo] = useState<number[]>([]);
+
   const [newAssignee, setNewAssignee] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newLabel, setNewLabel] = useState("");
-
-  const nonAdminUsers = users.filter((user) => user.role !== "admin");
 
   async function loadWebhooks() {
     const res = await fetch("/api/webhook", { cache: "no-store" });
@@ -115,27 +53,30 @@ export function AdminSettings() {
     if (!newAssignee && data.assignees?.length) setNewAssignee(data.assignees[0]);
   }
 
+
+  async function loadUploadQueueVisibility() {
+    const res = await fetch("/api/upload-queue/visibility", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      setUploadQueueVisibleTo(data.userIds || []);
+    }
+  }
+
+  async function updateUploadQueueVisibility(userIds: number[]) {
+    await fetch("/api/upload-queue/visibility", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userIds }),
+    });
+    setUploadQueueVisibleTo(userIds);
+  }
+
   async function loadColumns() {
     const res = await fetch("/api/columns", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       setBoardColumns(data.columns || []);
     }
-  }
-
-  async function loadUsers() {
-    const res = await fetch("/api/users", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      setUsers(data.users || []);
-    }
-  }
-
-  async function loadUploadQueueVisibility() {
-    const res = await fetch("/api/upload-queue/visibility", { cache: "no-store" });
-    if (!res.ok) return;
-    const data = await res.json();
-    setUploadQueueVisibleTo(data.userIds || []);
   }
 
   async function updateColumnVisibility(columnId: number, visibleTo: number[]) {
@@ -147,16 +88,14 @@ export function AdminSettings() {
     await loadColumns();
   }
 
-  async function updateUploadQueueVisibility(nextUserIds: number[]) {
-    const userIds = [...new Set(nextUserIds)].sort((left, right) => left - right);
-    setUploadQueueVisibleTo(userIds);
-    await fetch("/api/upload-queue/visibility", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userIds }),
-    });
-    await loadUploadQueueVisibility();
+  async function loadUsers() {
+    const res = await fetch("/api/users", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(data.users || []);
+    }
   }
+
 
   async function saveGlobal() {
     setSaving(true);
@@ -218,11 +157,11 @@ export function AdminSettings() {
     await loadUsers();
   }
 
-  async function updateAssignMode(userId: number, nextAssignMode: "restricted" | "unrestricted") {
+  async function updateAssignMode(userId: number, assignMode: "restricted" | "unrestricted") {
     await fetch("/api/users", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, assignMode: nextAssignMode }),
+      body: JSON.stringify({ userId, assignMode }),
     });
     await loadUsers();
   }
@@ -271,6 +210,7 @@ export function AdminSettings() {
     if (data.emailSent) {
       alert("Invite email sent!");
     } else if (data.registerUrl) {
+      // Email not configured — show the invite link to copy
       const copied = await navigator.clipboard.writeText(data.registerUrl).then(() => true).catch(() => false);
       alert(`Email not configured. Share this registration link:\n\n${data.registerUrl}${copied ? "\n\n(Copied to clipboard)" : ""}`);
     }
@@ -285,24 +225,17 @@ export function AdminSettings() {
   }, []);
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-6 md:px-8 md:py-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.12),transparent_28%),linear-gradient(180deg,var(--bg-primary),var(--bg-secondary))]" />
-      <div className="relative mx-auto max-w-6xl space-y-6">
-        <header className="glass-card p-5 md:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                <Shield className="h-3.5 w-3.5 text-[var(--accent-primary)]" />
-                Admin controls
-              </div>
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">Settings</h1>
-                <p className="text-sm text-[var(--text-secondary)]">Manage webhooks, permissions, invites, and upload queue access.</p>
-              </div>
+    <main className="relative min-h-screen overflow-hidden px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <header className="glass p-5">
+          <div className="content-layer flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-white">Admin Settings</h1>
+              <p className="text-sm text-slate-100">Manage webhooks and users.</p>
             </div>
             <Link
               href="/"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 text-sm font-medium text-[var(--text-primary)] transition-all duration-200 hover:border-[var(--border-hover)] hover:bg-[var(--bg-card-hover)] hover:shadow-[var(--shadow-sm)]"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Board
@@ -310,258 +243,285 @@ export function AdminSettings() {
           </div>
         </header>
 
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-6">
-            <Section title="Discord Webhooks" description="Configure the global webhook and any assignee-specific delivery rules." icon={<Webhook className="h-5 w-5" />}>
-              <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Global webhook</label>
-                <div className="flex flex-col gap-2 md:flex-row">
-                  <Input
-                    placeholder="https://discord.com/api/webhooks/..."
-                    value={globalUrl}
-                    onChange={(event) => setGlobalUrl(event.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={saveGlobal} disabled={saving}>
-                    Save
-                  </Button>
-                </div>
+        <section className="glass p-5 space-y-3">
+          <div className="content-layer space-y-3">
+            <h2 className="text-lg font-semibold text-white">Discord Webhooks</h2>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">Global Webhook (all tasks)</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://discord.com/api/webhooks/..."
+                  value={globalUrl}
+                  onChange={(e) => setGlobalUrl(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={saveGlobal} disabled={saving} size="sm">
+                  Save
+                </Button>
               </div>
+            </div>
 
-              <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--text-primary)]">Per-assignee webhooks</p>
-                    <p className="text-xs text-[var(--text-secondary)]">Turn delivery on or off without deleting the destination.</p>
-                  </div>
-                  <span className="rounded-full border border-[var(--border-default)] bg-[var(--bg-card)] px-2.5 py-1 text-xs text-[var(--text-secondary)]">
-                    Assign mode: {assignMode}
-                  </span>
-                </div>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-white/70">Per-Assignee Webhooks</label>
 
+              {webhookList.length === 0 ? (
+                <p className="text-sm text-white/40">No per-assignee webhooks configured yet.</p>
+              ) : (
                 <div className="space-y-2">
-                  {webhookList.length === 0 ? (
-                    <p className="text-sm text-[var(--text-secondary)]">No per-assignee webhooks configured yet.</p>
-                  ) : (
-                    webhookList.map((webhook) => (
-                      <div
-                        key={webhook.id}
-                        className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-card)] p-3 md:flex-row md:items-center"
+                  {webhookList.map((wh) => (
+                    <div key={wh.id} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+                      <span
+                        className={`text-sm font-semibold min-w-[70px] ${wh.assignee === "*" ? "text-yellow-300" : "text-cyan-300"}`}
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-[color:color-mix(in_srgb,var(--accent-primary)_15%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-primary)]">
-                              {webhook.assignee === "*" ? "All assignees" : webhook.assignee}
-                            </span>
-                            <span className="text-sm font-medium text-[var(--text-primary)]">{webhook.label || "Untitled webhook"}</span>
-                          </div>
-                          <p className="mt-1 truncate text-xs text-[var(--text-secondary)]" title={webhook.webhookUrl}>
-                            {webhook.webhookUrl}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => toggleWebhook(webhook.id, !webhook.enabled)}>
-                            {webhook.enabled ? "Enabled" : "Disabled"}
-                          </Button>
-                          <Button size="sm" variant="danger" onClick={() => deleteWebhook(webhook.id)}>
-                            Remove
-                          </Button>
-                        </div>
+                        {wh.assignee === "*" ? "All" : wh.assignee}
+                      </span>
+                      <span className="text-xs text-white/40 truncate flex-1" title={wh.webhookUrl}>
+                        {wh.label || `${wh.webhookUrl.slice(0, 50)}...`}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => toggleWebhook(wh.id, !wh.enabled)}
+                        className={wh.enabled ? "text-green-400" : "text-red-400"}
+                      >
+                        {wh.enabled ? "ON" : "OFF"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteWebhook(wh.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">Add Webhook</label>
+              <div className="flex gap-2 flex-wrap">
+                <select
+                  value={newAssignee}
+                  onChange={(e) => setNewAssignee(e.target.value)}
+                  className="rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm text-white"
+                >
+                  {assignees.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                  <option value="*">All (global)</option>
+                </select>
+                <Input
+                  placeholder="Label (optional)"
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  className="w-32"
+                />
+                <Input
+                  placeholder="https://discord.com/api/webhooks/..."
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  className="flex-1 min-w-[200px]"
+                />
+                <Button onClick={addWebhook} disabled={saving || !newUrl}>
+                  Add
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass p-5 space-y-4">
+          <div className="content-layer space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Users</h2>
+            </div>
+
+            <div className="space-y-2">
+              {users.map((user) => (
+                <div key={user.id} className="rounded-lg bg-white/5 px-3 py-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-white font-medium">{user.name}</p>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            user.role === "admin"
+                              ? "bg-amber-500/20 text-amber-300"
+                              : "bg-slate-500/20 text-slate-300"
+                          }`}
+                        >
+                          {user.role === "admin" ? "Admin" : "Member"}
+                        </span>
                       </div>
-                    ))
+                      <p className="text-xs text-slate-100 truncate">{user.email}</p>
+                    </div>
+                    {user.role !== "admin" && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Switch to ${user.name}'s view? You'll be logged in as them.`)) return;
+                          const res = await fetch("/api/auth/impersonate", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ userId: user.id }),
+                          });
+                          if (res.ok) {
+                            window.location.href = "/";
+                          } else {
+                            alert("Failed to impersonate user");
+                          }
+                        }}
+                        className="rounded-md bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 text-xs text-cyan-300 hover:bg-cyan-500/20 transition"
+                      >
+                        View as
+                      </button>
+                    )}
+                    <button
+                      onClick={() => resetPassword(user.id, user.name)}
+                      className="rounded-md bg-white/5 border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition"
+                    >
+                      Reset PW
+                    </button>
+                    <select
+                      className="rounded-md bg-white/10 border border-white/20 px-3 py-1 text-sm text-white"
+                      value={user.role}
+                      onChange={(event) => updateRole(user.id, event.target.value as "admin" | "user")}
+                    >
+                      <option value="user">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  {user.role !== "admin" && (
+                    <div className="flex items-center justify-between pl-1">
+                      <p className="text-xs text-slate-100">Can assign tasks to:</p>
+                      <select
+                        className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs text-slate-200"
+                        value={user.assignMode}
+                        onChange={(e) => updateAssignMode(user.id, e.target.value as "restricted" | "unrestricted")}
+                      >
+                        <option value="restricted">Self + Admins</option>
+                        <option value="unrestricted">Anyone</option>
+                      </select>
+                    </div>
                   )}
                 </div>
+              ))}
+            </div>
 
-                <div className="mt-4 grid gap-2 md:grid-cols-[160px_160px_minmax(0,1fr)_auto]">
-                  <select
-                    value={newAssignee}
-                    onChange={(event) => setNewAssignee(event.target.value)}
-                    className="h-11 rounded-full border border-[var(--border-default)] bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-[var(--border-hover)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--accent-primary)_24%,transparent)]"
-                  >
-                    {assignees.map((assignee) => (
-                      <option key={assignee} value={assignee}>
-                        {assignee}
-                      </option>
-                    ))}
-                    <option value="*">All (global)</option>
-                  </select>
-                  <Input placeholder="Label" value={newLabel} onChange={(event) => setNewLabel(event.target.value)} />
-                  <Input
-                    placeholder="https://discord.com/api/webhooks/..."
-                    value={newUrl}
-                    onChange={(event) => setNewUrl(event.target.value)}
-                  />
-                  <Button onClick={addWebhook} disabled={saving || !newUrl}>
-                    Add
-                  </Button>
-                </div>
+            <div className="border-t border-white/10 pt-4 space-y-2">
+              <h3 className="text-sm font-medium text-white">Invite User</h3>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="user@email.com"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={sendInvite} disabled={inviting || !inviteEmail.trim()}>
+                  {inviting ? "Sending..." : "Invite User"}
+                </Button>
               </div>
-            </Section>
-
-            <Section title="Upload Queue Visibility" description="Admins always see the upload queue. No selection keeps it open to everyone." icon={<ExternalLink className="h-5 w-5" />}>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {nonAdminUsers.map((user) => (
-                  <Toggle
-                    key={user.id}
-                    checked={uploadQueueVisibleTo.includes(user.id)}
-                    onChange={(checked) => {
-                      const nextUserIds = checked
-                        ? [...uploadQueueVisibleTo, user.id]
-                        : uploadQueueVisibleTo.filter((id) => id !== user.id);
-                      updateUploadQueueVisibility(nextUserIds);
-                    }}
-                    label={user.name}
-                    description={user.email}
-                  />
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] px-4 py-3">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  {uploadQueueVisibleTo.length === 0
-                    ? "Upload Queue is currently visible to every authenticated user."
-                    : `Upload Queue is limited to ${uploadQueueVisibleTo.length} selected member${uploadQueueVisibleTo.length === 1 ? "" : "s"} plus admins.`}
-                </p>
-                {uploadQueueVisibleTo.length > 0 ? (
-                  <Button variant="ghost" onClick={() => updateUploadQueueVisibility([])}>
-                    Reset to Everyone
-                  </Button>
-                ) : null}
-              </div>
-            </Section>
+            </div>
           </div>
+        </section>
 
-          <div className="space-y-6">
-            <Section title="Users" description="Manage roles, assignment permissions, invites, and impersonation." icon={<Users2 className="h-5 w-5" />}>
-              <div className="space-y-3">
-                {users.map((user) => (
-                  <article key={user.id} className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-[var(--text-primary)]">{user.name}</p>
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              user.role === "admin"
-                                ? "bg-[color:color-mix(in_srgb,var(--accent-warning)_16%,transparent)] text-[var(--accent-warning)]"
-                                : "bg-[var(--bg-card)] text-[var(--text-secondary)]"
-                            }`}
-                          >
-                            {user.role === "admin" ? "Admin" : "Member"}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">{user.email}</p>
-                      </div>
+        <section className="glass p-5 space-y-4">
+          <div className="content-layer space-y-4">
+            <h2 className="text-lg font-semibold text-white">Column Visibility</h2>
+            <p className="text-xs text-slate-300">Control which members can see each column. Admins always see all columns.</p>
 
-                      <div className="flex flex-wrap gap-2">
-                        {user.role !== "admin" ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={async () => {
-                              if (!confirm(`Switch to ${user.name}'s view? You'll be logged in as them.`)) return;
-                              const res = await fetch("/api/auth/impersonate", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ userId: user.id }),
-                              });
-                              if (res.ok) {
-                                window.location.href = "/";
-                              } else {
-                                alert("Failed to impersonate user");
-                              }
-                            }}
-                          >
-                            View As
-                          </Button>
-                        ) : null}
-                        <Button size="sm" variant="ghost" onClick={() => resetPassword(user.id, user.name)}>
-                          Reset PW
-                        </Button>
-                        <select
-                          className="h-9 rounded-full border border-[var(--border-default)] bg-[var(--bg-card)] px-3 text-sm text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-[var(--border-hover)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--accent-primary)_24%,transparent)]"
-                          value={user.role}
-                          onChange={(event) => updateRole(user.id, event.target.value as "admin" | "user")}
-                        >
-                          <option value="user">Member</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
+            <div className="space-y-3">
+              {boardColumns.map((col) => {
+                const nonAdminUsers = users.filter((u) => u.role !== "admin");
+                return (
+                  <div key={col.id} className="rounded-lg bg-white/5 px-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-white">{col.name}</p>
+                      <span className="text-xs text-slate-300">
+                        {col.visibleTo.length === 0 ? "Everyone" : `${col.visibleTo.length} member(s)`}
+                      </span>
                     </div>
-
-                    {user.role !== "admin" ? (
-                      <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border-default)] pt-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-xs text-[var(--text-secondary)]">Task assignment scope</p>
-                        <select
-                          className="h-9 rounded-full border border-[var(--border-default)] bg-[var(--bg-card)] px-3 text-sm text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-[var(--border-hover)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--accent-primary)_24%,transparent)]"
-                          value={user.assignMode}
-                          onChange={(event) => updateAssignMode(user.id, event.target.value as "restricted" | "unrestricted")}
-                        >
-                          <option value="restricted">Self + Admins</option>
-                          <option value="unrestricted">Anyone</option>
-                        </select>
-                      </div>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-
-              <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                <p className="mb-2 text-sm font-medium text-[var(--text-primary)]">Invite user</p>
-                <div className="flex flex-col gap-2 md:flex-row">
-                  <Input
-                    type="email"
-                    placeholder="user@email.com"
-                    value={inviteEmail}
-                    onChange={(event) => setInviteEmail(event.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={sendInvite} disabled={inviting || !inviteEmail.trim()}>
-                    {inviting ? "Sending..." : "Invite User"}
-                  </Button>
-                </div>
-              </div>
-            </Section>
-
-            <Section title="Column Visibility" description="Empty selection keeps a column open to everyone. Admins always retain access." icon={<Shield className="h-5 w-5" />}>
-              <div className="space-y-3">
-                {boardColumns.map((column) => (
-                  <article key={column.id} className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">{column.name}</p>
-                        <p className="text-xs text-[var(--text-secondary)]">
-                          {column.visibleTo.length === 0 ? "Visible to everyone" : `Visible to ${column.visibleTo.length} selected members`}
-                        </p>
-                      </div>
-                      {column.visibleTo.length > 0 ? (
-                        <Button size="sm" variant="ghost" onClick={() => updateColumnVisibility(column.id, [])}>
-                          Reset
-                        </Button>
-                      ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      {nonAdminUsers.map((user) => {
+                        const checked = col.visibleTo.includes(user.id);
+                        return (
+                          <label key={user.id} className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-1 cursor-pointer hover:bg-white/10 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...col.visibleTo, user.id]
+                                  : col.visibleTo.filter((id) => id !== user.id);
+                                updateColumnVisibility(col.id, next);
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-slate-200">{user.name}</span>
+                          </label>
+                        );
+                      })}
                     </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {nonAdminUsers.map((user) => (
-                        <Toggle
-                          key={user.id}
-                          checked={column.visibleTo.includes(user.id)}
-                          onChange={(checked) => {
-                            const nextVisibleTo = checked
-                              ? [...column.visibleTo, user.id]
-                              : column.visibleTo.filter((id) => id !== user.id);
-                            updateColumnVisibility(column.id, nextVisibleTo);
-                          }}
-                          label={user.name}
-                          description={user.email}
-                        />
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </Section>
+                    {col.visibleTo.length > 0 && (
+                      <button
+                        onClick={() => updateColumnVisibility(col.id, [])}
+                        className="text-xs text-cyan-400 hover:text-cyan-300"
+                      >
+                        Reset to everyone
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </section>
+        <section className="glass p-5 space-y-4">
+          <div className="content-layer space-y-4">
+            <h2 className="text-lg font-semibold text-white">Upload Queue Visibility</h2>
+            <p className="text-xs text-slate-300">Control which members can see the Upload Queue. Admins always see it. No selection = visible to everyone.</p>
+
+            <div className="flex flex-wrap gap-2">
+              {users.filter((u) => u.role !== "admin").map((user) => {
+                const checked = uploadQueueVisibleTo.includes(user.id);
+                return (
+                  <label key={user.id} className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-1 cursor-pointer hover:bg-white/10 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...uploadQueueVisibleTo, user.id]
+                          : uploadQueueVisibleTo.filter((id) => id !== user.id);
+                        updateUploadQueueVisibility(next);
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-slate-200">{user.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-400">
+              {uploadQueueVisibleTo.length === 0
+                ? "Upload Queue is visible to everyone."
+                : `Limited to ${uploadQueueVisibleTo.length} member(s) + admins.`}
+            </p>
+            {uploadQueueVisibleTo.length > 0 && (
+              <button
+                onClick={() => updateUploadQueueVisibility([])}
+                className="text-xs text-cyan-400 hover:text-cyan-300"
+              >
+                Reset to everyone
+              </button>
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );
