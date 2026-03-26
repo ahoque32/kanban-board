@@ -484,7 +484,7 @@ export function AdminSettings() {
         <section className="glass p-5 space-y-4">
           <div className="content-layer space-y-4">
             <h2 className="text-lg font-semibold text-white">Upload Queue Visibility</h2>
-            <p className="text-xs text-slate-300">Control which members can see the Upload Queue. Admins always see it. No selection = visible to everyone.</p>
+            <p className="text-xs text-slate-300">Control which members can see the Upload Queue. Admins always see it. Select members below to grant access.</p>
 
             <div className="flex flex-wrap gap-2">
               {users.filter((u) => u.role !== "admin").map((user) => {
@@ -509,8 +509,8 @@ export function AdminSettings() {
             </div>
             <p className="text-xs text-slate-400">
               {uploadQueueVisibleTo.length === 0
-                ? "Upload Queue is visible to everyone."
-                : `Limited to ${uploadQueueVisibleTo.length} member(s) + admins.`}
+                ? "Upload Queue is only visible to admins."
+                : `Visible to ${uploadQueueVisibleTo.length} member(s) + admins.`}
             </p>
             {uploadQueueVisibleTo.length > 0 && (
               <button

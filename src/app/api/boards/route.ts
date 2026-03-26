@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
     .from(uploadQueueVisibility);
   const canSeeUploadQueue =
     auth.user.role === "admin" ||
-    uploadQueueVisibleTo.length === 0 ||
     uploadQueueVisibleTo.some((row) => row.userId === auth.user.id);
 
   // Resolve createdBy IDs to names
