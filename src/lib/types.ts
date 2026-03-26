@@ -47,3 +47,19 @@ export type BoardResponse = {
   columns: KanbanColumn[];
   cards: KanbanCard[];
 };
+
+export type UploadQueueStatus = "pending" | "ready" | "uploaded";
+
+export type UploadQueueItem = {
+  id: number;
+  title: string;
+  date: string;
+  status: UploadQueueStatus;
+  driveLink: string | null;
+  notes: string;
+  createdBy: number | null;
+  creatorName: string | null;
+  webhookFired: number;
+  createdAt: string;
+  updatedAt: string;
+};

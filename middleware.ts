@@ -6,6 +6,7 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/register",
   "/api/webhook",
+  "/api/webhook/video-ready",
   "/api/auth/login",
   "/api/auth/register",
   "/api/board-summary",
