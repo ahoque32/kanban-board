@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { count, eq, isNull } from "drizzle-orm";
 import { db, sqlite } from "@/lib/db";
-import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, users } from "@/lib/schema";
+import { boards, cards, columns, settings, assignees, DEFAULT_ASSIGNEES, uploadQueue, users } from "@/lib/schema";
 
 let initialized = false;
 
@@ -102,6 +102,19 @@ export async function ensureDbInitialized() {
       role TEXT NOT NULL DEFAULT 'user',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS upload_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      drive_link TEXT,
+      notes TEXT NOT NULL DEFAULT '',
+      created_by INTEGER,
+      webhook_fired INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   if (!hasColumn("cards", "created_by")) {
@@ -116,12 +129,40 @@ export async function ensureDbInitialized() {
     sqlite.exec("ALTER TABLE users ADD COLUMN assign_mode TEXT NOT NULL DEFAULT 'restricted';");
   }
 
+  if (!hasColumn("upload_queue", "drive_link")) {
+    sqlite.exec("ALTER TABLE upload_queue ADD COLUMN drive_link TEXT;");
+  }
+
+  if (!hasColumn("upload_queue", "notes")) {
+    sqlite.exec("ALTER TABLE upload_queue ADD COLUMN notes TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn("upload_queue", "created_by")) {
+    sqlite.exec("ALTER TABLE upload_queue ADD COLUMN created_by INTEGER;");
+  }
+
+  if (!hasColumn("upload_queue", "webhook_fired")) {
+    sqlite.exec("ALTER TABLE upload_queue ADD COLUMN webhook_fired INTEGER NOT NULL DEFAULT 0;");
+  }
+
+  if (!hasColumn("upload_queue", "updated_at")) {
+    sqlite.exec("ALTER TABLE upload_queue ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP;");
+  }
+
   // Backfill null createdBy to admin user
   const nullCreatedByCards = db.select({ id: cards.id }).from(cards).where(isNull(cards.createdBy)).all();
   if (nullCreatedByCards.length > 0) {
     const [admin] = db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1).all();
     if (admin) {
       sqlite.exec(`UPDATE cards SET created_by = ${admin.id} WHERE created_by IS NULL;`);
+    }
+  }
+
+  const nullCreatedByUploads = db.select({ id: uploadQueue.id }).from(uploadQueue).where(isNull(uploadQueue.createdBy)).all();
+  if (nullCreatedByUploads.length > 0) {
+    const [admin] = db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1).all();
+    if (admin) {
+      sqlite.exec(`UPDATE upload_queue SET created_by = ${admin.id} WHERE created_by IS NULL;`);
     }
   }
 

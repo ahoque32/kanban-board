@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CardModal } from "@/components/CardModal";
 import { Column } from "@/components/Column";
 import { FilterBar } from "@/components/FilterBar";
+import { UploadQueue } from "@/components/UploadQueue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BoardResponse, KanbanCard, KanbanColumn } from "@/lib/types";
@@ -349,6 +350,10 @@ export function Board() {
           </div>
         </DndContext>
 
+        <div className="mt-6">
+          <UploadQueue isAdmin={isAdmin} />
+        </div>
+
         <CardModal
           open={modalState.open}
           onOpenChange={(open) =>
@@ -446,5 +451,4 @@ export function Board() {
     </main>
   );
 }
-
 

@@ -96,3 +96,16 @@ export const assignees = sqliteTable("assignees", {
   name: text("name").notNull().unique(),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
+
+export const uploadQueue = sqliteTable("upload_queue", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  date: text("date").notNull(),
+  status: text("status", { enum: ["pending", "ready", "uploaded"] }).notNull().default("pending"),
+  driveLink: text("drive_link"),
+  notes: text("notes").notNull().default(""),
+  createdBy: integer("created_by"),
+  webhookFired: integer("webhook_fired").notNull().default(0),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
