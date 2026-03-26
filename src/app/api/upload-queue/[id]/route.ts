@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     updates.status = requestedStatus;
   }
 
-  const shouldFireWebhook = requestedStatus === "ready" && existing.status !== "ready" && existing.webhookFired === 0;
+  const shouldFireWebhook = (requestedStatus === "ready" || requestedStatus === "uploaded") && existing.webhookFired === 0;
   if (shouldFireWebhook) {
     try {
       await sendDiscordVideoReadyNotification({
