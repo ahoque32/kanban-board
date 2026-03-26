@@ -25,14 +25,12 @@ export function Column({ column, cards, isAdmin, onAddCard, onCardClick, onDelet
   return (
     <section
       ref={setNodeRef}
-      className={`glass-card flex min-h-[28rem] w-[20rem] flex-shrink-0 flex-col p-4 md:w-[21rem] ${isOver ? "border-[var(--border-hover)] shadow-[var(--shadow-md)] ring-2 ring-[color:color-mix(in_srgb,var(--accent-primary)_18%,transparent)]" : ""}`}
+      className={`glass glass-column flex min-h-[26rem] w-[20rem] flex-shrink-0 flex-col p-4 transition ${isOver ? "ring-2 ring-cyan-400/40" : ""}`}
     >
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-[var(--border-default)] pb-3">
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">{column.name}</h2>
-          <div className="inline-flex items-center rounded-full bg-[var(--bg-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
-            {cards.length} task{cards.length === 1 ? "" : "s"}
-          </div>
+      <div className="content-layer mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-white">{column.name}</h2>
+          <p className="text-xs text-slate-100">{cards.length} task(s)</p>
         </div>
         <div className="flex items-center gap-1">
           {isAdmin && onDeleteColumn && cards.length === 0 && (
@@ -44,7 +42,7 @@ export function Column({ column, cards, isAdmin, onAddCard, onCardClick, onDelet
                   onDeleteColumn(column.id);
                 }
               }}
-              className="text-[var(--accent-danger)]"
+              className="text-red-400 hover:text-red-300"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -55,7 +53,9 @@ export function Column({ column, cards, isAdmin, onAddCard, onCardClick, onDelet
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 rounded-[var(--radius-md)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_75%,transparent)] p-2">
+      <div
+        className="content-layer flex flex-1 flex-col gap-3 rounded-2xl p-1"
+      >
         <SortableContext items={cards.map((card) => card.id)} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
             <Card key={card.id} card={card} onClick={onCardClick} />
@@ -63,7 +63,7 @@ export function Column({ column, cards, isAdmin, onAddCard, onCardClick, onDelet
         </SortableContext>
 
         {cards.length === 0 ? (
-          <div className="flex h-24 items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--border-hover)] bg-[var(--bg-card)] text-xs font-medium text-[var(--text-secondary)]">
+          <div className="flex h-24 items-center justify-center rounded-2xl border border-dashed border-white/35 bg-white/8 text-xs text-slate-100">
             Drop tasks here
           </div>
         ) : null}
