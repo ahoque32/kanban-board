@@ -288,15 +288,17 @@ export function UploadQueue({ isAdmin }: UploadQueueProps) {
                         >
                           {expanded ? "Hide Details" : "Details"}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={busy || item.status === "uploaded"}
-                          onClick={() => updateItem(item.id, { status: "uploaded" })}
-                        >
-                          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare2 className="h-4 w-4" />}
-                          Uploaded
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy || item.status === "uploaded"}
+                            onClick={() => updateItem(item.id, { status: "uploaded" })}
+                          >
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare2 className="h-4 w-4" />}
+                            Uploaded
+                          </Button>
+                        )}
                         {isAdmin ? (
                           <Button
                             size="icon"
