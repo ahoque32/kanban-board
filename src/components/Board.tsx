@@ -355,7 +355,7 @@ export function Board() {
         </DndContext>
 
         <div className="mt-6">
-          {canSeeUploadQueue && <UploadQueue isAdmin={isAdmin} />}
+          {canSeeUploadQueue && <UploadQueue isAdmin={isAdmin} currentUserId={sessionUser?.id ?? null} />}
         </div>
 
         <CardModal

@@ -19,6 +19,7 @@ import type { UploadQueueItem } from "@/lib/types";
 
 type UploadQueueProps = {
   isAdmin: boolean;
+  currentUserId: number | null;
 };
 
 type DraftItem = {
@@ -72,7 +73,7 @@ function statusBadge(item: UploadQueueItem) {
   };
 }
 
-export function UploadQueue({ isAdmin }: UploadQueueProps) {
+export function UploadQueue({ isAdmin, currentUserId }: UploadQueueProps) {
   const [items, setItems] = useState<UploadQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -286,7 +287,7 @@ export function UploadQueue({ isAdmin }: UploadQueueProps) {
                         >
                           {expanded ? "Hide Details" : "Details"}
                         </Button>
-                        {isAdmin && (
+                        {(isAdmin || item.createdBy === currentUserId) && (
                           <Button
                             size="sm"
                             variant="ghost"
