@@ -213,12 +213,10 @@ export function UploadQueue({ isAdmin }: UploadQueueProps) {
               Finished edits move here when they are ready for Director to publish.
             </p>
           </div>
-          {isAdmin ? (
-            <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add New
-            </Button>
-          ) : null}
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add New
+          </Button>
         </div>
 
         <div className="p-4">

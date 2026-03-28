@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   await ensureDbInitialized();
 
-  const auth = requireAdmin(request);
+  const auth = requireAuth(request);
   if (auth.response || !auth.user) {
     return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
