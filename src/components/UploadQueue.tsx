@@ -298,7 +298,7 @@ export function UploadQueue({ isAdmin, currentUserId }: UploadQueueProps) {
                             Uploaded
                           </Button>
                         )}
-                        {isAdmin ? (
+                        {(isAdmin || item.createdBy === currentUserId) ? (
                           <Button
                             size="icon"
                             variant="ghost"

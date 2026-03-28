@@ -106,7 +106,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   await ensureDbInitialized();
 
-  const auth = requireAdmin(request);
+  const auth = requireAuth(request);
   if (auth.response || !auth.user) {
     return auth.response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -118,9 +118,14 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid upload queue id" }, { status: 400 });
   }
 
-  const [existing] = await db.select({ id: uploadQueue.id }).from(uploadQueue).where(eq(uploadQueue.id, itemId)).limit(1);
+  const [existing] = await db.select().from(uploadQueue).where(eq(uploadQueue.id, itemId)).limit(1);
   if (!existing) {
     return NextResponse.json({ error: "Upload queue item not found" }, { status: 404 });
+  }
+
+  // Members can only delete items they created; admins can delete any
+  if (auth.user.role !== "admin" && existing.createdBy !== auth.user.id) {
+    return NextResponse.json({ error: "You can only delete items you created" }, { status: 403 });
   }
 
   await db.delete(uploadQueue).where(eq(uploadQueue.id, itemId));
