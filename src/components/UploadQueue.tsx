@@ -351,21 +351,7 @@ export function UploadQueue({ isAdmin }: UploadQueueProps) {
           )}
         </div>
 
-        {isAdmin ? (
-          <div className="border-t border-white/15 px-4 py-4">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">One-click URL for editor</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Copies a ready-to-edit template URL for Lemuel to bookmark on mobile.
-            </p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Input value={oneClickUrl} readOnly aria-label="One-click upload webhook URL" className="text-xs" />
-              <Button variant="ghost" onClick={copyOneClickLink}>
-                <Copy className="h-4 w-4" />
-                {copied ? "Copied" : "Copy Link"}
-              </Button>
-            </div>
-          </div>
-        ) : null}
+
       </section>
 
       <Dialog open={open} onOpenChange={setOpen}>
