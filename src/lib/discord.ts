@@ -61,11 +61,29 @@ async function sendToWebhook(url: string, body: object) {
   }
 }
 
-export async function getGlobalDiscordWebhookUrl(): Promise<string> {
+async function getGlobalDiscordWebhookUrls(): Promise<string[]> {
   // Prefer env var (always set on Cloud Run), fall back to DB settings
-  if (process.env.DISCORD_WEBHOOK_URL) return process.env.DISCORD_WEBHOOK_URL;
   const [global] = await db.select().from(settings).where(eq(settings.id, 1)).limit(1);
-  return global?.discordWebhookUrl || "";
+  const globalUrl = process.env.DISCORD_WEBHOOK_URL || global?.discordWebhookUrl || "";
+
+  // Also include any wildcard/all-assignee webhooks so upload-ready notifications
+  // can fan out to multiple Discord channels, not just the single global URL.
+  const allHooks = await db
+    .select()
+    .from(webhooks)
+    .where(eq(webhooks.assignee, "*"));
+
+  const allUrls = allHooks
+    .filter((h) => h.enabled)
+    .map((h) => h.webhookUrl)
+    .filter(Boolean);
+
+  return [...new Set([globalUrl, ...allUrls].filter(Boolean))];
+}
+
+export async function getGlobalDiscordWebhookUrl(): Promise<string> {
+  const [first] = await getGlobalDiscordWebhookUrls();
+  return first || "";
 }
 
 export async function sendDiscordTaskNotification(event: DiscordEvent, payload: NotifyPayload) {
@@ -113,8 +131,8 @@ type VideoReadyPayload = {
 };
 
 export async function sendDiscordVideoReadyNotification(payload: VideoReadyPayload) {
-  const url = await getGlobalDiscordWebhookUrl();
-  if (!url) {
+  const urls = await getGlobalDiscordWebhookUrls();
+  if (urls.length === 0) {
     throw new Error("Discord webhook URL is not configured");
   }
 
@@ -131,5 +149,5 @@ export async function sendDiscordVideoReadyNotification(payload: VideoReadyPaylo
 
   lines.push("", "Director — this video is ready. Check Drive and upload to all platforms.");
 
-  await sendToWebhook(url, { content: lines.join("\n") });
+  await Promise.allSettled(urls.map((url) => sendToWebhook(url, { content: lines.join("\n") })));
 }
