@@ -5,6 +5,10 @@ import { ensureDbInitialized } from "@/lib/init";
 import { settings, webhooks, users } from "@/lib/schema";
 import { requireSession } from "@/lib/session";
 
+function normalizeWebhookScope(value: unknown): "all" | "tasks" | "upload_queue" {
+  return value === "tasks" || value === "upload_queue" ? value : "all";
+}
+
 // GET — return all webhooks + global setting
 export async function GET(request: NextRequest) {
   await ensureDbInitialized();
@@ -26,6 +30,7 @@ export async function GET(request: NextRequest) {
       assignee: w.assignee,
       webhookUrl: w.webhookUrl,
       label: w.label,
+      scope: normalizeWebhookScope(w.scope),
       enabled: Boolean(w.enabled),
     })),
   });
@@ -63,7 +68,7 @@ export async function POST(request: NextRequest) {
 
   // Add a new per-assignee webhook
   if (body.addWebhook) {
-    const { assignee, webhookUrl, label } = body.addWebhook;
+    const { assignee, webhookUrl, label, scope } = body.addWebhook;
     if (!assignee || !webhookUrl) {
       return NextResponse.json({ error: "assignee and webhookUrl required" }, { status: 400 });
     }
@@ -73,6 +78,7 @@ export async function POST(request: NextRequest) {
         assignee: assignee.toString().trim(),
         webhookUrl: webhookUrl.toString().trim(),
         label: (label || "").toString().trim(),
+        scope: normalizeWebhookScope(scope),
         enabled: 1,
       })
       .returning();
@@ -85,6 +91,15 @@ export async function POST(request: NextRequest) {
     await db
       .update(webhooks)
       .set({ enabled: enabled ? 1 : 0 })
+      .where(eq(webhooks.id, Number(id)));
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.updateWebhookScope) {
+    const { id, scope } = body.updateWebhookScope;
+    await db
+      .update(webhooks)
+      .set({ scope: normalizeWebhookScope(scope) })
       .where(eq(webhooks.id, Number(id)));
     return NextResponse.json({ ok: true });
   }

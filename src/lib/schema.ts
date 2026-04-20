@@ -49,6 +49,7 @@ export const webhooks = sqliteTable("webhooks", {
   assignee: text("assignee").notNull(),
   webhookUrl: text("webhook_url").notNull(),
   label: text("label").notNull().default(""),
+  scope: text("scope", { enum: ["all", "tasks", "upload_queue"] }).notNull().default("all"),
   enabled: integer("enabled").notNull().default(1),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });

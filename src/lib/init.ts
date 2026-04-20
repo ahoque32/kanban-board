@@ -99,6 +99,7 @@ export async function ensureDbInitialized() {
       assignee TEXT NOT NULL,
       webhook_url TEXT NOT NULL,
       label TEXT NOT NULL DEFAULT '',
+      scope TEXT NOT NULL DEFAULT 'all',
       enabled INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -141,6 +142,18 @@ export async function ensureDbInitialized() {
 
   if (!hasColumn("users", "assign_mode")) {
     sqlite.exec("ALTER TABLE users ADD COLUMN assign_mode TEXT NOT NULL DEFAULT 'restricted';");
+  }
+
+  if (!hasColumn("webhooks", "scope")) {
+    sqlite.exec("ALTER TABLE webhooks ADD COLUMN scope TEXT NOT NULL DEFAULT 'all';");
+    sqlite.exec(`
+      UPDATE webhooks
+      SET scope = 'upload_queue'
+      WHERE lower(coalesce(label, '')) LIKE '%upload%'
+         OR lower(coalesce(label, '')) LIKE '%queue%'
+         OR lower(coalesce(label, '')) LIKE '%video%'
+         OR lower(coalesce(label, '')) LIKE '%ready%';
+    `);
   }
 
   if (!hasColumn("upload_queue", "drive_link")) {

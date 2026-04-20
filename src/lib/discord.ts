@@ -12,6 +12,29 @@ type NotifyPayload = {
   timestamp?: string;
 };
 
+type WebhookScope = "all" | "tasks" | "upload_queue";
+
+function normalizeLegacyScope(scope: string | null | undefined, label: string | null | undefined): WebhookScope {
+  if (scope === "tasks" || scope === "upload_queue") return scope;
+
+  const normalizedLabel = (label || "").toLowerCase();
+  if (
+    normalizedLabel.includes("upload") ||
+    normalizedLabel.includes("queue") ||
+    normalizedLabel.includes("video") ||
+    normalizedLabel.includes("ready")
+  ) {
+    return "upload_queue";
+  }
+
+  return "all";
+}
+
+function matchesScope(scope: string | null | undefined, label: string | null | undefined, eventType: "tasks" | "upload_queue") {
+  const normalizedScope = normalizeLegacyScope(scope, label);
+  return normalizedScope === "all" || normalizedScope === eventType;
+}
+
 async function getWebhookUrlsForAssignee(assignee: string): Promise<string[]> {
   // Get per-assignee webhooks
   const assigneeHooks = await db
@@ -20,7 +43,7 @@ async function getWebhookUrlsForAssignee(assignee: string): Promise<string[]> {
     .where(eq(webhooks.assignee, assignee));
 
   const urls = assigneeHooks
-    .filter((h) => h.enabled)
+    .filter((h) => h.enabled && matchesScope(h.scope, h.label, "tasks"))
     .map((h) => h.webhookUrl)
     .filter(Boolean);
 
@@ -35,7 +58,7 @@ async function getWebhookUrlsForAssignee(assignee: string): Promise<string[]> {
     .where(eq(webhooks.assignee, "*"));
 
   const allUrls = allHooks
-    .filter((h) => h.enabled)
+    .filter((h) => h.enabled && matchesScope(h.scope, h.label, "tasks"))
     .map((h) => h.webhookUrl)
     .filter(Boolean);
 
@@ -74,7 +97,7 @@ async function getGlobalDiscordWebhookUrls(): Promise<string[]> {
     .where(eq(webhooks.assignee, "*"));
 
   const allUrls = allHooks
-    .filter((h) => h.enabled)
+    .filter((h) => h.enabled && matchesScope(h.scope, h.label, "upload_queue"))
     .map((h) => h.webhookUrl)
     .filter(Boolean);
 

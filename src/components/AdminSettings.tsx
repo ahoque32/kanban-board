@@ -11,6 +11,7 @@ type Webhook = {
   assignee: string;
   webhookUrl: string;
   label: string;
+  scope: "all" | "tasks" | "upload_queue";
   enabled: boolean;
 };
 
@@ -42,6 +43,7 @@ export function AdminSettings() {
   const [newAssignee, setNewAssignee] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newLabel, setNewLabel] = useState("");
+  const [newScope, setNewScope] = useState<"all" | "tasks" | "upload_queue">("all");
 
   async function loadWebhooks() {
     const res = await fetch("/api/webhook", { cache: "no-store" });
@@ -114,12 +116,22 @@ export function AdminSettings() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        addWebhook: { assignee: newAssignee, webhookUrl: newUrl, label: newLabel },
+        addWebhook: { assignee: newAssignee, webhookUrl: newUrl, label: newLabel, scope: newScope },
       }),
     });
     setNewUrl("");
     setNewLabel("");
+    setNewScope("all");
     setSaving(false);
+    await loadWebhooks();
+  }
+
+  async function updateWebhookScope(id: number, scope: "all" | "tasks" | "upload_queue") {
+    await fetch("/api/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updateWebhookScope: { id, scope } }),
+    });
     await loadWebhooks();
   }
 
@@ -248,6 +260,7 @@ export function AdminSettings() {
             <h2 className="text-lg font-semibold text-white">Discord Webhooks</h2>
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">Global Webhook (all tasks)</label>
+              <p className="text-xs text-white/45">Use per-webhook scope below if a channel should receive only upload queue alerts.</p>
               <div className="flex gap-2">
                 <Input
                   placeholder="https://discord.com/api/webhooks/..."
@@ -278,6 +291,15 @@ export function AdminSettings() {
                       <span className="text-xs text-white/40 truncate flex-1" title={wh.webhookUrl}>
                         {wh.label || `${wh.webhookUrl.slice(0, 50)}...`}
                       </span>
+                      <select
+                        value={wh.scope || "all"}
+                        onChange={(e) => updateWebhookScope(wh.id, e.target.value as "all" | "tasks" | "upload_queue")}
+                        className="rounded-md bg-white/10 border border-white/20 px-2 py-1 text-xs text-white"
+                      >
+                        <option value="all">All</option>
+                        <option value="tasks">Tasks only</option>
+                        <option value="upload_queue">Upload queue only</option>
+                      </select>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -321,6 +343,15 @@ export function AdminSettings() {
                   onChange={(e) => setNewLabel(e.target.value)}
                   className="w-32"
                 />
+                <select
+                  value={newScope}
+                  onChange={(e) => setNewScope(e.target.value as "all" | "tasks" | "upload_queue")}
+                  className="rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm text-white"
+                >
+                  <option value="all">All notifications</option>
+                  <option value="tasks">Tasks only</option>
+                  <option value="upload_queue">Upload queue only</option>
+                </select>
                 <Input
                   placeholder="https://discord.com/api/webhooks/..."
                   value={newUrl}
